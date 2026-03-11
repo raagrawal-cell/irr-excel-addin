@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #202124; font-size: 13px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── Layout ── */
+    .shell { display: flex; flex: 1; min-height: 0; }
+    .sidebar { width: 260px; background: #fff; border-right: 1px solid #dadce0; display: flex; flex-direction: column; flex-shrink: 0; }
+    .main    { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+    /* ── Sidebar (Library) ── */
+    .sb-header { padding: 14px 16px; border-bottom: 1px solid #e8eaed; background: #f8f9fa; }
+    .sb-header h2 { font-size: 13px; font-weight: 700; color: #1a73e8; text-transform: uppercase; letter-spacing: 0.3px; }
+    .sb-list { flex: 1; overflow-y: auto; }
+    .sb-footer { padding: 10px; border-top: 1px solid #e8eaed; }
+
+    .config-item { padding: 10px 14px; border-bottom: 1px solid #f1f3f4; cursor: default; transition: background 0.1s; }
+    .config-item:hover { background: #f8f9fa; }
+    .ci-top { display: flex; justify-content: space-between; align-items: center; }
+    .ci-name { font-weight: 600; font-size: 13px; }
+    .ci-meta { font-size: 10px; color: #80868b; margin-top: 2px; }
+    .ci-actions { display: flex; gap: 4px; margin-top: 6px; }
+    .default-badge { display: inline-block; background: #e6f4ea; color: #137333; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-left: 6px; border: 1px solid #ceead6; }
+    .empty-state { padding: 24px 16px; text-align: center; color: #80868b; font-size: 12px; font-style: italic; }
+
+    /* ── Cards ── */
+    .card { background: #fff; border-radius: 8px; padding: 16px 18px; margin-bottom: 16px; border: 1px solid #e0e0e0; }
+    .card-title { font-size: 12px; font-weight: 700; color: #1a73e8; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+
+    /* ── Form ── */
+    .row { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-end; }
+    .form-group { flex: 1; min-width: 0; }
+    label { display: block; font-size: 10px; color: #5f6368; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+    select, input[type="text"], input[type="date"] { width: 100%; padding: 7px 8px; border: 1px solid #dadce0; border-radius: 4px; background: #fff; font-size: 12px; color: #202124; transition: border-color 0.15s; }
+    select:focus, input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+    hr { border: none; border-top: 1px solid #f1f3f4; margin: 12px 0; }
+
+    /* ── Hierarchy rows ── */
+    .dyn-row { display: flex; gap: 6px; align-items: flex-end; background: #f8f9fa; padding: 6px 8px; border-radius: 5px; margin-bottom: 5px; }
+    .dyn-row .form-group { flex: 1; }
+    .dyn-num { font-size: 11px; font-weight: 700; color: #1a73e8; align-self: center; min-width: 20px; text-align: center; }
+
+    /* ── Buttons ── */
+    .btn { padding: 7px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12px; transition: background 0.15s, opacity 0.15s; white-space: nowrap; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #1557b0; }
+    .btn-success { background: #34a853; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #2d8f47; }
+    .btn-outline { background: #fff; color: #3c4043; border: 1px solid #dadce0; }
+    .btn-outline:hover:not(:disabled) { background: #f1f3f4; }
+    .btn-danger { background: #d93025; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #b3261e; }
+    .btn-xs { padding: 3px 8px; font-size: 11px; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .btn-full { width: 100%; }
+
+    /* ── Footer bar ── */
+    .footer-bar { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 24px; background: #fff; border-top: 1px solid #dadce0; flex-shrink: 0; }
+
+    /* ── Info banner ── */
+    .info-banner { background: #e8f0fe; border: 1px solid #d2e3fc; border-radius: 6px; padding: 10px 14px; font-size: 11px; color: #1967d2; margin-bottom: 16px; line-height: 1.5; }
+    .info-banner b { color: #174ea6; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(8px); padding: 10px 20px; border-radius: 6px; font-size: 12px; font-weight: 500; color: #fff; z-index: 300; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; max-width: 500px; text-align: center; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok  { background: #34a853; }
+    .toast.err { background: #d93025; }
+    .toast.info { background: #1a73e8; }
+
+    /* ── Loader ── */
+    .loader { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.75); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+    .loader.active { display: flex; }
+    .spinner { width: 28px; height: 28px; border: 3px solid #dadce0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { font-size: 12px; color: #5f6368; }
+
+    /* ── Section label ── */
+    .sec-label { font-size: 10px; font-weight: 700; color: #5f6368; text-transform: uppercase; letter-spacing: 0.3px; margin: 12px 0 6px; display: flex; align-items: center; justify-content: space-between; }
+  </style>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script type="module" src="../engine/bridge.js"></script>
+</head>
+<body>
+
+<!-- Loader -->
+<div class="loader" id="loader"><div class="spinner"></div><div class="loader-text" id="loaderMsg">Loading…</div></div>
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<div class="shell">
+
+  <!-- ════════════ LEFT: Library List ════════════ -->
+  <div class="sidebar">
+    <div class="sb-header"><h2>📂 Saved Configs</h2></div>
+    <div class="sb-list" id="libList"><div class="empty-state">Loading…</div></div>
+    <div class="sb-footer">
+      <button class="btn btn-outline btn-full btn-sm" onclick="handleNewBlank()">＋ New Blank Config</button>
+    </div>
+  </div>
+
+  <!-- ════════════ RIGHT: Config Editor ════════════ -->
+  <div class="main">
+
+    <!-- Info banner -->
+    <div class="info-banner">
+      <b>ℹ️ Simplified Config:</b> Quarters are <b>auto-detected</b> from your cashflow &amp; valuation dates at compute time.
+      Transaction type mapping is read from the <b>Mapping_Table</b> sheet (not configured here).
+    </div>
+
+    <!-- Name + Source -->
+    <div class="card">
+      <div class="card-title">⚙️ Configuration
+        <span style="display:flex; gap:6px;">
+          <label style="cursor:pointer; display:flex; align-items:center; text-transform:none; font-size:12px; font-weight:500; margin:0;">
+            <input type="checkbox" id="cfgDefault" style="margin-right:4px;"> Default
+          </label>
+        </span>
+      </div>
+      <div class="row">
+        <div class="form-group" style="flex:2"><label>Config Name</label><input type="text" id="cfgName" placeholder="e.g. Fund I — Q3 Reporting"></div>
+        <div class="form-group"><label>Cashflow Tab</label><select id="cfTab" onchange="onTabChange('cf')"></select></div>
+        <div class="form-group"><label>Valuation Tab</label><select id="valTab" onchange="onTabChange('val')"></select></div>
+      </div>
+    </div>
+
+    <!-- Hierarchy + Column Mapping (side by side) -->
+    <div style="display:flex; gap:16px;">
+
+      <!-- Hierarchy -->
+      <div class="card" style="flex:1;">
+        <div class="card-title">Hierarchy Levels <button class="btn btn-outline btn-xs" onclick="addHierLevel()">+ Add</button></div>
+        <div id="hierList"></div>
+      </div>
+
+      <!-- Column Mapping -->
+      <div class="card" style="flex:1;">
+        <div class="card-title">Column Mapping</div>
+        <div class="sec-label">Cashflow Columns</div>
+        <div class="row">
+          <div class="form-group"><label>Date</label><select class="cf-h" id="mDate"></select></div>
+          <div class="form-group"><label>Amount</label><select class="cf-h" id="mAmount"></select></div>
+          <div class="form-group"><label>Type</label><select class="cf-h" id="mType"></select></div>
+        </div>
+        <div class="row">
+          <div class="form-group"><label>Currency</label><select class="cf-h" id="mCurrency"></select></div>
+          <div class="form-group"><label>Notes</label><select class="cf-h" id="mNotes"></select></div>
+        </div>
+        <div class="sec-label">Valuation Columns</div>
+        <div class="row">
+          <div class="form-group"><label>Date</label><select class="val-h" id="mvDate"></select></div>
+          <div class="form-group"><label>Amount</label><select class="val-h" id="mvAmount"></select></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- Footer (fixed bottom) -->
+<div class="footer-bar">
+  <button class="btn btn-outline" onclick="handlePreview()">👁️ Preview</button>
+  <button class="btn btn-primary" onclick="handleSave()">💾 Save Config</button>
+  <button class="btn btn-success" onclick="handleCompute()">🚀 Save &amp; Compute IRR</button>
+  <button class="btn btn-outline" onclick="ivpClose()">Close</button>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════ */
+var headers = { cf: [], val: [] };
+
+/* ── Helpers ── */
+function show(m) { document.getElementById('loader').classList.add('active'); document.getElementById('loaderMsg').textContent = m||'Working…'; }
+function hide()  { document.getElementById('loader').classList.remove('active'); }
+function toast(m,t) { var e=document.getElementById('toast'); e.textContent=m; e.className='toast '+(t||'ok')+' show'; setTimeout(function(){e.classList.remove('show');},3200); }
+function esc(s) { var d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
+
+function rpc(fn, args, msg) {
+  return new Promise(function(ok, fail) {
+    show(msg||'Working…');
+    var r = google.script.run.withSuccessHandler(function(v){hide();ok(v);}).withFailureHandler(function(e){hide();fail(e);});
+    if (!args||!args.length) r[fn]();
+    else if (args.length===1) r[fn](args[0]);
+    else if (args.length===2) r[fn](args[0],args[1]);
+    else r[fn](args[0],args[1],args[2]);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════════════════ */
+window.onload = async function() {
+  // ── Wait for bridge.js module (max 5 s) ───────────────────────────────────
+  for (var _w = 0; _w < 100 && typeof window.IVP_INIT !== 'function'; _w++) {
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+  if (typeof window.IVP_INIT !== 'function') {
+    toast('IVP Engine not loaded — check engine/bridge.js path.', 'err'); return;
+  }
+  // Config Library does not need the bundle (it builds/saves configs from scratch)
+  // but we still need the shim so all rpc() calls below work via bridge.js
+  loadLibrary();
+  rpc('getSheetNames',[],'Loading sheets…')
+    .then(populateTabDropdowns)
+    .catch(function(e){ toast('Sheet load failed: '+e.message,'err'); });
+};
+
+// ivpClose: replaces google.script.host.close() for Excel task pane
+function ivpClose() {
+  if (typeof Office !== 'undefined' && Office.context && Office.context.ui) {
+    Office.context.ui.messageParent(JSON.stringify({type:'close'}));
+  } else {
+    window.close();
+  }
+}
+
+/* ── Tab Dropdowns ── */
+function populateTabDropdowns(sheets) {
+  ['cfTab','valTab'].forEach(function(id) {
+    var s=document.getElementById(id); s.innerHTML='';
+    sheets.forEach(function(n){ s.add(new Option(n,n)); });
+  });
+  onTabChange('cf'); onTabChange('val');
+}
+
+function onTabChange(type) {
+  var tab = document.getElementById(type+'Tab').value;
+  if (!tab) return;
+  rpc('getTabHeaders',[tab,1],'Reading columns…')
+    .then(function(h){ headers[type]=h||[]; refreshDropdowns(); })
+    .catch(function(e){ toast('Headers failed: '+e.message,'err'); });
+}
+
+function refreshDropdowns() {
+  fill('.cf-h', headers.cf); fill('.val-h', headers.val);
+  fill('.hier-cf', headers.cf); fill('.hier-val', headers.val);
+}
+function fill(sel, opts) {
+  document.querySelectorAll(sel).forEach(function(d) {
+    var p=d.value; d.innerHTML='<option value="">— select —</option>';
+    opts.forEach(function(h){ d.add(new Option(h,h)); }); if(p) d.value=p;
+  });
+}
+function fillOne(el, opts, val) {
+  el.innerHTML='<option value="">— select —</option>';
+  opts.forEach(function(h){ el.add(new Option(h,h)); }); if(val) el.value=val;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HIERARCHY
+   ══════════════════════════════════════════════════════════════════════════ */
+function addHierLevel(label, cfCol, valCol) {
+  var list=document.getElementById('hierList');
+  var idx=list.children.length+1;
+  var d=document.createElement('div'); d.className='dyn-row';
+  d.innerHTML=
+    '<span class="dyn-num">L'+idx+'</span>'+
+    '<div class="form-group"><input type="text" class="hier-label" value="'+esc(label||'')+'" placeholder="e.g. Fund"></div>'+
+    '<div class="form-group"><select class="hier-cf"></select></div>'+
+    '<div class="form-group"><select class="hier-val"></select></div>'+
+    '<button class="btn btn-danger btn-xs" onclick="this.parentElement.remove();renum()" style="margin-bottom:2px;">✕</button>';
+  list.appendChild(d);
+  fillOne(d.querySelector('.hier-cf'), headers.cf, cfCol);
+  fillOne(d.querySelector('.hier-val'), headers.val, valCol);
+}
+function renum() { document.querySelectorAll('#hierList .dyn-row').forEach(function(r,i){ r.querySelector('.dyn-num').textContent='L'+(i+1); }); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BUILD CONFIG OBJECT FROM UI
+   ══════════════════════════════════════════════════════════════════════════ */
+function getUIConfig() {
+  var hier = [];
+  document.querySelectorAll('#hierList .dyn-row').forEach(function(r,i) {
+    hier.push({ level:i+1, label:r.querySelector('.hier-label').value.trim(), cfCol:r.querySelector('.hier-cf').value, valCol:r.querySelector('.hier-val').value });
+  });
+  return {
+    source: { cfTab: document.getElementById('cfTab').value, valTab: document.getElementById('valTab').value, cfHeaderRow:1, valHeaderRow:1 },
+    cfMap:  { date: document.getElementById('mDate').value, amount: document.getElementById('mAmount').value, type: document.getElementById('mType').value,
+              currency: document.getElementById('mCurrency').value, notes: document.getElementById('mNotes').value },
+    valMap: { date: document.getElementById('mvDate').value, amount: document.getElementById('mvAmount').value },
+    hierarchy: hier
+  };
+}
+
+function validateUI() {
+  var c=getUIConfig(), e=[];
+  if (!c.source.cfTab)  e.push('Select a Cashflow Tab');
+  if (!c.source.valTab) e.push('Select a Valuation Tab');
+  if (!c.cfMap.date)    e.push('Map CF → Date');
+  if (!c.cfMap.amount)  e.push('Map CF → Amount');
+  if (!c.cfMap.type)    e.push('Map CF → Type');
+  if (!c.valMap.date)   e.push('Map Val → Date');
+  if (!c.valMap.amount) e.push('Map Val → Amount');
+  if (!c.hierarchy.length) e.push('Add at least one hierarchy level');
+  c.hierarchy.forEach(function(h,i) {
+    if (!h.label)  e.push('Hierarchy L'+(i+1)+': enter label');
+    if (!h.cfCol)  e.push('Hierarchy L'+(i+1)+': select CF column');
+    if (!h.valCol) e.push('Hierarchy L'+(i+1)+': select Val column');
+  });
+  return e;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LOAD SAVED CONFIG INTO FORM
+   ══════════════════════════════════════════════════════════════════════════ */
+function loadIntoForm(cfg, name, isDef) {
+  document.getElementById('cfgName').value = name||'';
+  document.getElementById('cfgDefault').checked = !!isDef;
+  if (cfg.source) {
+    if (cfg.source.cfTab)  document.getElementById('cfTab').value=cfg.source.cfTab;
+    if (cfg.source.valTab) document.getElementById('valTab').value=cfg.source.valTab;
+  }
+  var pending=2;
+  function after() {
+    pending--; if (pending>0) return;
+    refreshDropdowns();
+    if (cfg.cfMap) { ['date','amount','type','currency','notes'].forEach(function(k){ var id='m'+k.charAt(0).toUpperCase()+k.slice(1); var el=document.getElementById(id); if(el&&cfg.cfMap[k]) el.value=cfg.cfMap[k]; }); }
+    if (cfg.valMap) { if(cfg.valMap.date) document.getElementById('mvDate').value=cfg.valMap.date; if(cfg.valMap.amount) document.getElementById('mvAmount').value=cfg.valMap.amount; }
+    document.getElementById('hierList').innerHTML='';
+    if (cfg.hierarchy) cfg.hierarchy.forEach(function(h){addHierLevel(h.label,h.cfCol,h.valCol);});
+    toast('Loaded "'+name+'"','info');
+  }
+  rpc('getTabHeaders',[document.getElementById('cfTab').value,1],'Loading CF columns…')
+    .then(function(h){headers.cf=h||[];after();}).catch(after);
+  rpc('getTabHeaders',[document.getElementById('valTab').value,1],'Loading Val columns…')
+    .then(function(h){headers.val=h||[];after();}).catch(after);
+}
+
+function handleNewBlank() {
+  document.getElementById('cfgName').value='';
+  document.getElementById('cfgDefault').checked=false;
+  document.getElementById('hierList').innerHTML='';
+  document.querySelectorAll('.cf-h, .val-h').forEach(function(s){s.value='';});
+  toast('Form cleared','info');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIBRARY LIST
+   ══════════════════════════════════════════════════════════════════════════ */
+function loadLibrary() {
+  rpc('getConfigs',[],'Loading library…').then(renderLibrary).catch(function(e){toast('Library: '+e.message,'err');});
+}
+
+function renderLibrary(configs) {
+  var el=document.getElementById('libList');
+  if (!configs||!configs.length) { el.innerHTML='<div class="empty-state">No saved configs yet.<br>Fill the form and click Save.</div>'; return; }
+  el.innerHTML='';
+  configs.forEach(function(c) {
+    var item=document.createElement('div'); item.className='config-item';
+
+    var top=document.createElement('div'); top.className='ci-top';
+    var nm=document.createElement('span'); nm.className='ci-name'; nm.textContent=c.name; top.appendChild(nm);
+    if (c.isDefault) { var bg=document.createElement('span'); bg.className='default-badge'; bg.textContent='DEFAULT'; top.appendChild(bg); }
+    item.appendChild(top);
+
+    if (c.savedAt) { var mt=document.createElement('div'); mt.className='ci-meta'; mt.textContent=c.savedAt; item.appendChild(mt); }
+
+    var acts=document.createElement('div'); acts.className='ci-actions';
+    var bLoad=document.createElement('button'); bLoad.className='btn btn-outline btn-xs'; bLoad.textContent='Load'; bLoad.onclick=(function(cc){return function(){handleLoad(cc);};})(c); acts.appendChild(bLoad);
+    var bStar=document.createElement('button'); bStar.className='btn btn-outline btn-xs'; bStar.textContent='⭐'; bStar.title='Set default'; bStar.onclick=(function(n){return function(){handleSetDefault(n);};})(c.name); acts.appendChild(bStar);
+    var bDel=document.createElement('button'); bDel.className='btn btn-danger btn-xs'; bDel.textContent='✕'; bDel.onclick=(function(n){return function(){handleDelete(n);};})(c.name); acts.appendChild(bDel);
+    item.appendChild(acts);
+    el.appendChild(item);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ACTIONS
+   ══════════════════════════════════════════════════════════════════════════ */
+function handleLoad(c) { loadIntoForm(c.config, c.name, c.isDefault); }
+
+function handleSave() {
+  var name=document.getElementById('cfgName').value.trim();
+  var isDef=document.getElementById('cfgDefault').checked;
+  if (!name) { toast('Enter a config name.','err'); return; }
+  var errs=validateUI(); if (errs.length) { alert('⚠️ Fix before saving:\n\n• '+errs.join('\n• ')); return; }
+  rpc('saveConfig',[name,getUIConfig(),isDef],'Saving…')
+    .then(function(){toast('✅ Saved "'+name+'"');loadLibrary();})
+    .catch(function(e){toast('Save failed: '+e.message,'err');});
+}
+
+function handleDelete(name) {
+  if (!confirm('Delete "'+name+'"?')) return;
+  rpc('deleteConfig',[name],'Deleting…')
+    .then(function(){toast('Deleted "'+name+'"');loadLibrary();})
+    .catch(function(e){toast('Delete failed: '+e.message,'err');});
+}
+
+function handleSetDefault(name) {
+  rpc('setDefaultConfig',[name],'Setting default…')
+    .then(function(){toast('⭐ "'+name+'" is now default');loadLibrary();})
+    .catch(function(e){toast('Failed: '+e.message,'err');});
+}
+
+function handlePreview() {
+  var errs=validateUI(); if (errs.length) { alert('⚠️ Fix:\n\n• '+errs.join('\n• ')); return; }
+  rpc('previewFromUI',[getUIConfig()],'Generating preview…')
+    .then(function(msg){alert(msg);})
+    .catch(function(e){toast('Preview failed: '+e.message,'err');});
+}
+
+function handleCompute() {
+  var name=document.getElementById('cfgName').value.trim();
+  var isDef=document.getElementById('cfgDefault').checked;
+  var errs=validateUI(); if (errs.length) { alert('⚠️ Fix:\n\n• '+errs.join('\n• ')); return; }
+  var cfg = getUIConfig();
+  rpc('saveAndCompute',[name||'(last run)', cfg, isDef],'Saving & computing IRR…')
+    .then(function(){toast('✅ IRR Compute complete!');loadLibrary();ivpClose();})
+    .catch(function(e){toast('Compute failed: '+e.message,'err');});
+}
+</script>
+</body>
+</html>

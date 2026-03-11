@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script type="module" src="../engine/bridge.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif;
+  background: #f0f2f5; color: #202124; font-size: 13px;
+  height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+}
+
+/* ── Top bar ── */
+.topbar {
+  background: linear-gradient(135deg, #1a237e 0%, #283593 60%, #1565c0 100%);
+  color: #fff; padding: 12px 20px; display: flex;
+  align-items: center; gap: 12px; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .3px; }
+.topbar .sub { font-size: 11px; opacity: .75; margin-left: auto; }
+
+/* ── Body split ── */
+.body { display: flex; flex: 1; min-height: 0; }
+.panel-left  { width: 340px; background: #fff; border-right: 1px solid #dadce0;
+               display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.panel-right { flex: 1; overflow-y: auto; padding: 20px 22px; background: #f8f9fa; }
+
+/* ── Section headers ── */
+.sec-hdr {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: #1a73e8; padding: 12px 16px 6px;
+  border-top: 1px solid #e8eaed;
+}
+.sec-hdr:first-child { border-top: none; }
+
+/* ── Mode tabs ── */
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 14px 12px; }
+.mode-btn {
+  border: 2px solid #dadce0; border-radius: 8px; background: #fff;
+  padding: 10px 8px; cursor: pointer; text-align: center; transition: all .15s;
+  position: relative;
+}
+.mode-btn:hover { border-color: #1a73e8; background: #e8f0fe; }
+.mode-btn.active { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; }
+.mode-btn .mi { font-size: 18px; display: block; margin-bottom: 3px; }
+.mode-btn .ml { font-size: 11px; font-weight: 700; }
+.mode-btn .md { font-size: 10px; color: #5f6368; margin-top: 2px; }
+.mode-btn.active .md { color: #1a73e8; }
+
+/* ── ⓘ Info icon + tooltip ── */
+.info-wrap { position: relative; display: inline-flex; align-items: center; }
+.info-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: #dadce0; color: #5f6368; font-size: 9px; font-weight: 700;
+  cursor: pointer; margin-left: 5px; flex-shrink: 0; line-height: 1;
+  transition: background .15s;
+  user-select: none;
+}
+.info-icon:hover { background: #1a73e8; color: #fff; }
+.info-tooltip {
+  display: none; position: fixed; z-index: 9999;
+  background: #202124; color: #fff; font-size: 11px; line-height: 1.5;
+  padding: 8px 11px; border-radius: 6px; width: 230px; max-width: 230px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+.info-wrap:hover .info-tooltip { display: block; }
+.info-tooltip strong { color: #8ab4f8; }
+.info-tooltip .tt-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.info-tooltip .tt-key { color: #9aa0a6; }
+.info-tooltip .tt-val { color: #e8eaed; font-weight: 600; white-space: nowrap; }
+
+/* ── Form rows ── */
+.frow { padding: 6px 14px; }
+.frow label {
+  display: flex; align-items: center;
+  font-size: 11px; font-weight: 600; color: #5f6368; margin-bottom: 3px;
+}
+.frow select, .frow input {
+  width: 100%; padding: 7px 10px; border: 1px solid #dadce0; border-radius: 6px;
+  font-size: 12px; background: #fff; color: #202124; outline: none;
+}
+.frow select:focus, .frow input:focus { border-color: #1a73e8; }
+.frow select.warn { border-color: #f9ab00; background: #fffde7; }
+.frow .hint { font-size: 10px; color: #80868b; margin-top: 3px; }
+.frow .err-hint { font-size: 10px; color: #c0392b; margin-top: 3px; font-weight: 600; display: none; }
+
+/* ── Current snapshot ── */
+.snapshot-bar {
+  margin: 6px 14px; background: #e8f0fe; border: 1px solid #c5d8fc;
+  border-radius: 8px; padding: 8px 12px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+}
+.sn-item { text-align: center; }
+.sn-val  { font-size: 14px; font-weight: 700; color: #1a237e; }
+.sn-lbl  { font-size: 10px; color: #5f6368; }
+
+/* ── Action buttons ── */
+.btn-row { padding: 12px 14px 14px; display: flex; gap: 8px; }
+.btn {
+  padding: 9px 18px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; transition: all .15s;
+}
+.btn-primary { background: #1a73e8; color: #fff; flex: 1; }
+.btn-primary:hover:not(:disabled) { background: #1557b0; }
+.btn-primary:disabled { background: #80868b; cursor: not-allowed; }
+.btn-reset { background: #f1f3f4; color: #5f6368; }
+.btn-reset:hover { background: #e8eaed; }
+
+/* ── Result area ── */
+.result-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; flex-direction: column; gap: 12px; color: #80868b;
+}
+.result-placeholder .big-icon { font-size: 48px; }
+.result-placeholder p { font-size: 13px; max-width: 260px; text-align: center; }
+
+/* ── Result card ── */
+.result-card { background: #fff; border-radius: 12px; border: 1px solid #dadce0;
+               overflow: hidden; margin-bottom: 16px; }
+.rc-header {
+  padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid #e8eaed;
+}
+.rc-header.feasible   { background: linear-gradient(135deg, #e8f5e9, #f0fdf4); }
+.rc-header.infeasible { background: linear-gradient(135deg, #fce8e6, #fff3f0); }
+.rc-entity { font-size: 11px; color: #5f6368; }
+.rc-title  { font-size: 13px; font-weight: 700; }
+
+/* ── Hero area: solved value + delta side by side ── */
+.hero-area {
+  display: flex; align-items: stretch; border-bottom: 1px solid #e8eaed;
+}
+.hero-main {
+  flex: 1; padding: 18px 20px;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.hero-val  { font-size: 36px; font-weight: 700; color: #1a237e; line-height: 1; }
+.hero-unit { font-size: 16px; color: #5f6368; font-weight: 500; }
+.hero-lbl  { font-size: 12px; color: #5f6368; margin-left: 4px; }
+
+/* ── Delta panel (right side of hero) ── */
+.hero-delta {
+  width: 180px; border-left: 1px solid #e8eaed;
+  padding: 14px 16px; display: flex; flex-direction: column;
+  justify-content: center; gap: 8px; background: #fafbfe;
+}
+.hd-row { display: flex; justify-content: space-between; align-items: center; }
+.hd-lbl { font-size: 10px; color: #80868b; }
+.hd-val { font-size: 12px; font-weight: 700; }
+.hd-val.current { color: #5f6368; }
+.hd-val.target  { color: #1b5e20; }
+.hd-val.delta-pos { color: #1b5e20; }
+.hd-val.delta-neg { color: #c0392b; }
+.hd-divider { height: 1px; background: #e8eaed; }
+.hd-gap-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #fff3e0; border-radius: 4px; padding: 4px 6px; margin-top: 2px;
+}
+.hd-gap-lbl { font-size: 10px; color: #e65100; font-weight: 600; }
+.hd-gap-val { font-size: 12px; font-weight: 700; color: #e65100; }
+.hd-gap-row.surplus { background: #e8f5e9; }
+.hd-gap-row.surplus .hd-gap-lbl,
+.hd-gap-row.surplus .hd-gap-val { color: #1b5e20; }
+
+/* ── Metrics row ── */
+.metrics-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0; border-bottom: 1px solid #e8eaed;
+}
+.metric-cell {
+  padding: 10px 14px; border-right: 1px solid #e8eaed; text-align: center;
+}
+.metric-cell:last-child { border-right: none; }
+.mc-val     { font-size: 16px; font-weight: 700; color: #202124; }
+.mc-sub     { font-size: 10px; margin-top: 1px; }
+.mc-lbl     { font-size: 10px; color: #80868b; margin-top: 3px; }
+.mc-val.up  { color: #1b8739; }
+.mc-val.down { color: #c0392b; }
+.mc-delta-pos { color: #1b8739; }
+.mc-delta-neg { color: #c0392b; }
+.mc-delta-neu { color: #80868b; }
+
+/* ── Delta badge (header) ── */
+.delta-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;
+}
+.delta-badge.pos { background: #e8f5e9; color: #1b5e20; }
+.delta-badge.neg { background: #fce8e6; color: #b71c1c; }
+.delta-badge.neu { background: #e8eaed; color: #3c4043; }
+
+/* ── Infeasible banner ── */
+.infeasible-banner {
+  background: #fce8e6; border-left: 4px solid #d93025;
+  padding: 12px 16px; margin: 14px; border-radius: 6px;
+  font-size: 12px; color: #b31412; line-height: 1.5;
+}
+
+/* ── Narrative ── */
+.narrative-box {
+  margin: 14px; padding: 12px 14px; background: #f8f9fa;
+  border-left: 3px solid #1a73e8; border-radius: 0 6px 6px 0;
+  font-size: 12px; line-height: 1.6; color: #3c4043;
+}
+
+/* ── Sensitivity table ── */
+.sens-section { padding: 0 14px 14px; }
+.sens-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sens-table th {
+  background: #f1f3f4; padding: 7px 10px; text-align: right;
+  font-weight: 600; color: #5f6368; font-size: 11px;
+}
+.sens-table th:first-child { text-align: left; }
+.sens-table td { padding: 7px 10px; border-bottom: 1px solid #f1f3f4; text-align: right; }
+.sens-table td:first-child { text-align: left; font-weight: 600; }
+.sens-table tr.base-row { background: #e8f0fe; font-weight: 700; }
+.sens-table tr.base-row td { color: #1a237e; border-top: 2px solid #1a73e8; border-bottom: 2px solid #1a73e8; }
+.irr-positive { color: #1b5e20; }
+.irr-negative { color: #c0392b; }
+.sens-delta-pos { color: #1b5e20; font-size: 10px; }
+.sens-delta-neg { color: #c0392b; font-size: 10px; }
+.sens-delta-neu { color: #80868b; font-size: 10px; }
+
+/* ── Spinner ── */
+.spinner {
+  width: 32px; height: 32px; border: 3px solid #e8eaed;
+  border-top-color: #1a73e8; border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-state { display: flex; align-items: center; justify-content: center;
+                 height: 200px; flex-direction: column; gap: 12px; color: #5f6368; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span style="font-size:20px">🔍</span>
+  <h1>Reverse IRR / Backsolve</h1>
+  <span class="sub">IRR Analytics Engine v2.0 — IVP</span>
+</div>
+
+<div class="body">
+
+  <!-- ════════ LEFT PANEL ════════ -->
+  <div class="panel-left">
+
+    <div class="sec-hdr">Solver Mode</div>
+    <div class="mode-grid">
+
+      <!-- Each mode button has an ⓘ tooltip in the top-right corner -->
+      <div class="mode-btn active" data-mode="NAV" onclick="selectMode('NAV')">
+        <span class="mi">💰</span>
+        <span class="ml">Exit NAV</span>
+        <div class="md">What NAV do I need?</div>
+        <div class="info-wrap" style="position:absolute;top:5px;right:6px"
+             onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">
+            <strong>Exit NAV Solver</strong><br>
+            Finds the terminal portfolio value needed to hit your target IRR.<br><br>
+            <div class="tt-row"><span class="tt-key">Search range</span><span class="tt-val">$0 → 30× invested</span></div>
+            <div class="tt-row"><span class="tt-key">Tolerance</span><span class="tt-val">$1</span></div>
+            <div class="tt-row"><span class="tt-key">Algorithm</span><span class="tt-val">Binary search, 200 iter</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-btn" data-mode="MOIC" onclick="selectMode('MOIC')">
+        <span class="mi">✖️</span>
+        <span class="ml">Exit Multiple</span>
+        <div class="md">What MOIC do I need?</div>
+        <div class="info-wrap" style="position:absolute;top:5px;right:6px"
+             onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">
+            <strong>Exit MOIC Solver</strong><br>
+            Solves for the gross multiple on invested capital. Converts MOIC → NAV internally, accounting for distributions already returned.<br><br>
+            <div class="tt-row"><span class="tt-key">Search range</span><span class="tt-val">0.01× → 30×</span></div>
+            <div class="tt-row"><span class="tt-key">Tolerance</span><span class="tt-val">0.0001×</span></div>
+            <div class="tt-row"><span class="tt-key">Algorithm</span><span class="tt-val">Binary search, 200 iter</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-btn" data-mode="HOLD" onclick="selectMode('HOLD')">
+        <span class="mi">⏱️</span>
+        <span class="ml">Hold Period</span>
+        <div class="md">How long must I hold?</div>
+        <div class="info-wrap" style="position:absolute;top:5px;right:6px"
+             onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">
+            <strong>Hold Period Solver</strong><br>
+            Holds NAV constant and finds the earliest exit date where IRR ≥ target. Uses linear scan (not binary search) because IRR vs. time is non-monotone during the J-curve.<br><br>
+            <div class="tt-row"><span class="tt-key">Horizon</span><span class="tt-val">Up to 120 months (10 yr)</span></div>
+            <div class="tt-row"><span class="tt-key">Step size</span><span class="tt-val">1 month</span></div>
+            <div class="tt-row"><span class="tt-key">NAV</span><span class="tt-val">Held constant at override or current</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-btn" data-mode="CASHFLOW" onclick="selectMode('CASHFLOW')">
+        <span class="mi">💸</span>
+        <span class="ml">Add. Cashflow</span>
+        <div class="md">What injection today?</div>
+        <div class="info-wrap" style="position:absolute;top:5px;right:6px"
+             onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">
+            <strong>Additional Cashflow Solver</strong><br>
+            Finds a distribution (positive) or capital call (negative) injected today that moves IRR to target.<br><br>
+            <div class="tt-row"><span class="tt-key">Search range</span><span class="tt-val">−2× invested → current NAV</span></div>
+            <div class="tt-row"><span class="tt-key">Tolerance</span><span class="tt-val">$100</span></div>
+            <div class="tt-row"><span class="tt-key">Algorithm</span><span class="tt-val">Binary search, 200 iter</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /mode-grid -->
+
+    <div class="sec-hdr">Entity &amp; Period</div>
+
+    <div class="frow">
+      <label>Entity</label>
+      <select id="selEntity" onchange="onEntityChange()"><option>Loading…</option></select>
+    </div>
+
+    <!-- Live snapshot of current state -->
+    <div class="snapshot-bar" id="snapshotBar">
+      <div class="sn-item"><div class="sn-val" id="sn-irr">—</div><div class="sn-lbl">Current IRR</div></div>
+      <div class="sn-item"><div class="sn-val" id="sn-moic">—</div><div class="sn-lbl">MOIC</div></div>
+      <div class="sn-item"><div class="sn-val" id="sn-nav">—</div><div class="sn-lbl">NAV</div></div>
+    </div>
+
+    <!-- As-of Quarter -->
+    <div class="frow">
+      <label>As-of Quarter
+        <div class="info-wrap" onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">Cashflows through this quarter form the base. The solver adds a hypothetical terminal value on the exit date.</div>
+        </div>
+      </label>
+      <select id="selAsOf" onchange="onAsOfChange()"><option>Loading…</option></select>
+      <div class="hint">Cashflows through this quarter are used as the base.</div>
+    </div>
+
+    <!-- Exit Quarter (hidden for HOLD mode) -->
+    <div class="frow" id="rowExitQ">
+      <label>Exit Date (Target)
+        <div class="info-wrap" onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">
+            Select the exact target exit date. Must be on or after the As-of Quarter end date. Allows precise modeling beyond your data horizon.
+          </div>
+        </div>
+      </label>
+      <input type="date" id="inExitDate" onchange="onExitDateChange()">
+      <div class="hint" id="hintExit">Pick an exit date on or after the as-of quarter.</div>
+      <div class="err-hint" id="errExit">⚠ Exit date must be on or after the as-of quarter end date.</div>
+    </div>
+
+    <div class="sec-hdr">Target &amp; Overrides</div>
+
+    <div class="frow">
+      <label>Target IRR (%)
+        <div class="info-wrap" onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">Annual net IRR (XIRR basis). Solver finds the exit assumption that produces exactly this rate. Typical PE hurdle: 8%. Target returns: 15–25%.</div>
+        </div>
+      </label>
+      <input type="number" id="inTargetIRR" value="20" min="1" max="100" step="0.5">
+    </div>
+
+    <div class="frow" id="rowNAVOverride">
+      <label>Current NAV Override ($)
+        <span style="font-weight:400;color:#80868b;margin-left:3px">optional</span>
+        <div class="info-wrap" onclick="event.stopPropagation()">
+          <span class="info-icon">i</span>
+          <div class="info-tooltip">
+            Overrides the NAV pulled from the latest valuation in your data.<br><br>
+            <strong>Required</strong> for Hold Period mode — that solver holds NAV constant as the terminal exit value.
+          </div>
+        </div>
+      </label>
+      <input type="number" id="inNAVOverride" placeholder="0 = use system NAV" min="0">
+      <div class="hint" id="hintNAVOverride">Leave blank to use the latest valuation from the data.</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-reset" onclick="resetForm()">Reset</button>
+      <button class="btn btn-primary" id="btnSolve" onclick="solve()">⚡ Solve</button>
+    </div>
+
+  </div><!-- /panel-left -->
+
+  <!-- ════════ RIGHT PANEL ════════ -->
+  <div class="panel-right" id="rightPanel">
+    <div class="result-placeholder" id="placeholder">
+      <div class="big-icon">🎯</div>
+      <p>Select an entity and target IRR, then click <strong>Solve</strong> to backsolve your exit scenario.</p>
+      <p style="color:#aaa;font-size:11px">Hover the ⓘ icons to see solver assumptions for each mode</p>
+    </div>
+  </div>
+
+</div><!-- /body -->
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CLIENT-SIDE JAVASCRIPT
+   ══════════════════════════════════════════════════════════ */
+
+var BUNDLE  = {};
+var curMode = 'NAV';
+var QTR_ORDER = [];   // ordered array of quarter labels for comparison
+
+/* ── Init ─────────────────────────────────────────────── */
+// ── Excel Add-in async init — replaces JSON.parse(<?= bundle ?>) ─────────────
+(async function init() {
+  // Wait for bridge.js module + load bundle from workbook
+  for (var _w = 0; _w < 100 && typeof window.IVP_INIT !== 'function'; _w++) {
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+  if (typeof window.IVP_INIT !== 'function') { showError('IVP Engine not loaded. Check engine/bridge.js.'); return; }
+  await window.IVP_INIT();
+  BUNDLE = window.IVP_BUNDLE || {};
+
+  if (!BUNDLE || BUNDLE.error) { showError(BUNDLE && BUNDLE.error ? BUNDLE.error : 'Bundle not loaded.'); return; }
+
+  // ── Normalise bundle shape for Reverse IRR (pathKeys / pathLabels / quarterLabels / snapshot) ──
+  // Standard bundle uses BUNDLE.deals[]; ReverseIRR expects flat arrays + snapshot map
+  BUNDLE.pathKeys   = (BUNDLE.deals || []).map(function(d){ return d.pathKey || d.name; });
+  BUNDLE.pathLabels = (BUNDLE.deals || []).map(function(d){ return d.name || d.pathKey; });
+  BUNDLE.quarterLabels = (BUNDLE.quarters || []).map(function(q){
+    return (typeof q === 'string') ? q : (q.label || String(q));
+  });
+  // Build snapshot map: { pathKey: {irr, moic, nav} }
+  BUNDLE.snapshot = {};
+  (BUNDLE.deals || []).forEach(function(d){
+    BUNDLE.snapshot[d.pathKey || d.name] = {
+      irr:  d.irr  != null ? +(d.irr  * 100).toFixed(2) : null,
+      moic: d.moic != null ? +d.moic.toFixed(2) : null,
+      nav:  d.nav  || 0
+    };
+  });
+
+  // Populate entity dropdown
+  var sel = document.getElementById('selEntity');
+  sel.innerHTML = '';
+  BUNDLE.pathKeys.forEach(function(k, i) {
+    var opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = BUNDLE.pathLabels[i];
+    sel.appendChild(opt);
+  });
+
+  // Quarter list + ordering index
+  QTR_ORDER = BUNDLE.quarterLabels || [];
+  populateQuarters();
+  onEntityChange();
+})();
+
+function showError(msg) {
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="result-placeholder"><div class="big-icon">❌</div><p>'+escHtml(msg)+'</p></div>';
+}
+
+function populateQuarters() {
+  var sel = document.getElementById('selAsOf');
+  sel.innerHTML = '';
+  QTR_ORDER.forEach(function(q) {
+    var opt = document.createElement('option');
+    opt.value = q; opt.textContent = q;
+    sel.appendChild(opt);
+  });
+  if (QTR_ORDER.length) {
+    document.getElementById('selAsOf').value = QTR_ORDER[QTR_ORDER.length-1];
+    // Set default exit date to last quarter end date
+    setDefaultExitDate();
+  }
+}
+
+function setDefaultExitDate() {
+  var asOfQ = document.getElementById('selAsOf').value;
+  var qDate = quarterToDate(asOfQ);
+  if (qDate) {
+    // Default exit date: same as as-of quarter end
+    document.getElementById('inExitDate').value = formatDateForInput(qDate);
+    // Set min attribute to as-of quarter end date
+    document.getElementById('inExitDate').min = formatDateForInput(qDate);
+  }
+}
+
+function quarterToDate(qLabel) {
+  var m = String(qLabel).match(/Q(\d)\s+(\d{4})/i);
+  if (!m) return null;
+  var q = parseInt(m[1]), y = parseInt(m[2]);
+  var em = {1:2, 2:5, 3:8, 4:11}, ed = {1:31, 2:30, 3:30, 4:31};
+  return new Date(y, em[q], ed[q]);
+}
+
+function formatDateForInput(d) {
+  var yyyy = d.getFullYear();
+  var mm   = String(d.getMonth() + 1).padStart(2, '0');
+  var dd   = String(d.getDate()).padStart(2, '0');
+  return yyyy + '-' + mm + '-' + dd;
+}
+
+function dateToQuarterLabel(d) {
+  var mo = d.getMonth();
+  var yr = d.getFullYear();
+  var qNum;
+  if (mo <= 2) qNum = 1;
+  else if (mo <= 5) qNum = 2;
+  else if (mo <= 8) qNum = 3;
+  else qNum = 4;
+  return 'Q' + qNum + ' ' + yr;
+}
+
+function onEntityChange() {
+  var key  = document.getElementById('selEntity').value;
+  var snap = BUNDLE.snapshot && BUNDLE.snapshot[key];
+  if (snap) {
+    document.getElementById('sn-irr').textContent  = snap.irr  !== null ? snap.irr+'%'       : '—';
+    document.getElementById('sn-moic').textContent = snap.moic !== null ? snap.moic+'x'      : '—';
+    document.getElementById('sn-nav').textContent  = snap.nav            ? '$'+fmtNum(snap.nav) : '—';
+    if (snap.nav && !document.getElementById('inNAVOverride').value)
+      document.getElementById('inNAVOverride').placeholder = '$'+fmtNum(snap.nav)+' (from data)';
+  } else {
+    ['sn-irr','sn-moic','sn-nav'].forEach(function(id){
+      document.getElementById(id).textContent = '—';
+    });
+  }
+}
+
+/* ── Quarter / exit date validation ─────────────── */
+function onAsOfChange() {
+  updateExitDateMin();
+  validateExitDate();
+}
+
+function onExitDateChange() {
+  validateExitDate();
+}
+
+function updateExitDateMin() {
+  var asOfQ = document.getElementById('selAsOf').value;
+  var qDate = quarterToDate(asOfQ);
+  if (qDate) {
+    var minStr = formatDateForInput(qDate);
+    document.getElementById('inExitDate').min = minStr;
+    // If current exit date is before new min, reset it
+    var curExit = document.getElementById('inExitDate').value;
+    if (curExit && curExit < minStr) {
+      document.getElementById('inExitDate').value = minStr;
+    }
+  }
+}
+
+function validateExitDate() {
+  var asOfQ   = document.getElementById('selAsOf').value;
+  var qDate   = quarterToDate(asOfQ);
+  var exitStr = document.getElementById('inExitDate').value;
+  var errEl   = document.getElementById('errExit');
+  var hintEl  = document.getElementById('hintExit');
+  var input   = document.getElementById('inExitDate');
+
+  if (!exitStr || !qDate) {
+    errEl.style.display  = 'none';
+    hintEl.style.display = 'block';
+    input.classList.remove('warn');
+    document.getElementById('btnSolve').disabled = false;
+    return;
+  }
+
+  var exitDate = new Date(exitStr + 'T00:00:00');
+  var invalid  = exitDate < qDate;
+
+  errEl.style.display  = invalid ? 'block' : 'none';
+  hintEl.style.display = invalid ? 'none'  : 'block';
+  input.classList.toggle('warn', invalid);
+  document.getElementById('btnSolve').disabled = invalid;
+}
+
+/* ── Mode selection ───────────────────────────────────── */
+function selectMode(mode) {
+  curMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  document.getElementById('rowExitQ').style.display = (mode === 'HOLD') ? 'none' : '';
+  document.getElementById('hintNAVOverride').textContent =
+    mode === 'HOLD'
+      ? 'Required for Hold mode — NAV is held constant as the terminal exit value.'
+      : 'Leave blank to use the latest valuation from the data.';
+}
+
+/* ── Solve ────────────────────────────────────────────── */
+function solve() {
+  var entityKey = document.getElementById('selEntity').value;
+  var asOfQ     = document.getElementById('selAsOf').value;
+  var exitDate  = document.getElementById('inExitDate').value;
+  var targetIRR = parseFloat(document.getElementById('inTargetIRR').value);
+  var navOvr    = parseFloat(document.getElementById('inNAVOverride').value) || 0;
+
+  if (!entityKey)                          { alert('Please select an entity.'); return; }
+  if (isNaN(targetIRR) || targetIRR <= 0) { alert('Enter a valid target IRR (e.g. 20).'); return; }
+
+  // Guard: exit date must be ≥ as-of quarter end
+  if (curMode !== 'HOLD') {
+    if (!exitDate) { alert('Please select an exit date.'); return; }
+    var asOfDate = quarterToDate(asOfQ);
+    var exitD    = new Date(exitDate + 'T00:00:00');
+    if (asOfDate && exitD < asOfDate) { alert('Exit date must be on or after the as-of quarter end date.'); return; }
+  }
+
+  // Derive an exit quarter label for display, but pass the exact date
+  var exitQuarterLabel = exitDate ? dateToQuarterLabel(new Date(exitDate + 'T00:00:00')) : asOfQ;
+
+  var params = {
+    mode: curMode, pathKey: entityKey,
+    asOfQuarter: asOfQ, exitQuarter: exitQuarterLabel,
+    exitDateStr: exitDate,
+    targetIRR: targetIRR, currentNAV: navOvr
+  };
+
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="loading-state"><div class="spinner"></div>' +
+    '<p>Solving… binary search over cashflow data</p></div>';
+  document.getElementById('btnSolve').disabled = true;
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      document.getElementById('btnSolve').disabled = false;
+      renderResult(res, params);
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('btnSolve').disabled = false;
+      showError(err.message);
+    })
+    .solveReverseIRR(params);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER RESULT
+   ══════════════════════════════════════════════════════════ */
+function renderResult(r, params) {
+  if (!r.ok) { showError(r.error); return; }
+
+  var irrDelta     = (r.targetIRR - r.currentIRR).toFixed(2);
+  var irrDeltaDir  = irrDelta > 0 ? 'pos' : irrDelta < 0 ? 'neg' : 'neu';
+  var irrDeltaSign = irrDelta > 0 ? '+' : '';
+  var irrArrow     = irrDelta > 0 ? '↑' : irrDelta < 0 ? '↓' : '→';
+
+  var html = '<div class="result-card">';
+
+  /* ── Card header ── */
+  html += '<div class="rc-header '+(r.feasible?'feasible':'infeasible')+'">';
+  html += '<div>';
+  html += '<div class="rc-entity">'+escHtml(r.entityLabel||'')+'  •  as of '+r.asOfQuarter;
+  if (curMode !== 'HOLD') html += '  →  exit '+r.exitQuarter;
+  html += '</div>';
+  html += '<div class="rc-title">'+(r.feasible?'✅':'⚠️')+' Backsolve: '+modeTitle(curMode)+'</div>';
+  html += '</div>';
+  html += '<div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px">';
+  html += '<span class="delta-badge '+irrDeltaDir+'">'
+        + irrArrow+' IRR gap: '+irrDeltaSign+irrDelta+'%</span>';
+  html += '</div>';
+  html += '</div>';
+
+  /* ── Infeasible ── */
+  if (!r.feasible) {
+    html += '<div class="infeasible-banner">'+escHtml(r.infeasibleReason)+'</div>';
+    html += '<div class="narrative-box">'+escHtml(r.narrative)+'</div>';
+    html += '</div>';
+    document.getElementById('rightPanel').innerHTML = html;
+    return;
+  }
+
+  /* ── Hero area: solved value LEFT + delta panel RIGHT ── */
+  var heroVal = r.solvedUnit === '$' ? '$'+fmtNum(Math.abs(r.solvedValue)) : r.solvedValue;
+  html += '<div class="hero-area">';
+
+  // Left: the answer
+  html += '<div class="hero-main">';
+  html += '<span class="hero-val">'+heroVal+'</span>';
+  html += '<span class="hero-unit">'+r.solvedUnit+'</span>';
+  html += '<span class="hero-lbl">'+escHtml(r.solvedLabel)+'</span>';
+  html += '</div>';
+
+  // Right: current vs required delta panel
+  var deltaInfo = buildDeltaPanel(r, curMode);
+  html += '<div class="hero-delta">';
+  deltaInfo.forEach(function(row) {
+    if (row.type === 'divider') {
+      html += '<div class="hd-divider"></div>';
+    } else if (row.type === 'gap') {
+      var surplus = row.dir === 'pos';
+      html += '<div class="hd-gap-row'+(surplus?' surplus':'')+'">';
+      html += '<span class="hd-gap-lbl">'+escHtml(row.label)+'</span>';
+      html += '<span class="hd-gap-val">'+(surplus?'▲ ':'▼ ')+escHtml(row.value)+'</span>';
+      html += '</div>';
+    } else {
+      html += '<div class="hd-row">';
+      html += '<span class="hd-lbl">'+escHtml(row.label)+'</span>';
+      html += '<span class="hd-val '+row.cls+'">'+escHtml(row.value)+'</span>';
+      html += '</div>';
+    }
+  });
+  html += '</div>';
+  html += '</div>';
+
+  /* ── Metrics row with inline deltas ── */
+  html += '<div class="metrics-row">';
+  buildMetricCells(r).forEach(function(mc) {
+    html += '<div class="metric-cell">';
+    html += '<div class="mc-val '+(mc.cls||'')+'">'+mc.val+'</div>';
+    if (mc.delta) {
+      var dcls = mc.deltaDir === 'pos' ? 'mc-delta-pos' : mc.deltaDir === 'neg' ? 'mc-delta-neg' : 'mc-delta-neu';
+      html += '<div class="mc-sub '+dcls+'">'+(mc.deltaDir==='pos'?'▲ ':'▼ ')+escHtml(mc.delta)+'</div>';
+    }
+    html += '<div class="mc-lbl">'+escHtml(mc.lbl)+'</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  /* ── Narrative ── */
+  html += '<div class="narrative-box">'+escHtml(r.narrative)+'</div>';
+  html += '</div>';
+
+  /* ── Sensitivity Table ── */
+  if (r.sensitivity && r.sensitivity.length) {
+    var baseRow = r.sensitivity.find(function(s){ return s.isBase; });
+    html += '<div class="result-card">';
+    html += '<div style="padding:12px 16px;border-bottom:1px solid #e8eaed;font-weight:700;font-size:12px;color:#1a237e">';
+    html += '📊 Sensitivity Analysis — ±30% around solved value</div>';
+    html += '<div class="sens-section" style="padding-top:12px">';
+    html += '<table class="sens-table"><thead><tr>';
+    html += '<th>Scenario</th>';
+    html += '<th>Exit NAV</th>';
+    html += '<th>Δ NAV vs Target</th>';
+    html += '<th>MOIC</th>';
+    html += '<th>Δ MOIC vs Target</th>';
+    html += '<th>Implied IRR</th>';
+    html += '<th>Δ IRR vs Target</th>';
+    html += '</tr></thead><tbody>';
+
+    r.sensitivity.forEach(function(row) {
+      var rc     = row.isBase ? ' class="base-row"' : '';
+      var irrCls = row.irr >= r.targetIRR ? 'irr-positive' : 'irr-negative';
+
+      // NAV delta vs base
+      var navDelta  = baseRow && !row.isBase ? row.nav - baseRow.nav : null;
+      var navDCls   = navDelta === null ? '' : navDelta >= 0 ? 'sens-delta-pos' : 'sens-delta-neg';
+      var navDStr   = navDelta === null ? '—'
+        : (navDelta >= 0 ? '+$' : '-$') + fmtNum(Math.abs(navDelta));
+
+      // MOIC delta vs base
+      var moicDelta = baseRow && !row.isBase ? (row.moic - baseRow.moic).toFixed(2) : null;
+      var moicDCls  = moicDelta === null ? '' : moicDelta >= 0 ? 'sens-delta-pos' : 'sens-delta-neg';
+      var moicDStr  = moicDelta === null ? '—'
+        : (moicDelta >= 0 ? '+' : '') + moicDelta + 'x';
+
+      // IRR delta vs target
+      var irrDelta2  = (row.irr - r.targetIRR).toFixed(2);
+      var irrD2Cls   = irrDelta2 >= 0 ? 'sens-delta-pos' : 'sens-delta-neg';
+      var irrD2Str   = (irrDelta2 >= 0 ? '+' : '') + irrDelta2 + '%';
+
+      html += '<tr'+rc+'>';
+      html += '<td>'+escHtml(row.label)+'</td>';
+      html += '<td>'+(row.nav ? '$'+fmtNum(row.nav) : '—')+'</td>';
+      html += '<td class="'+navDCls+'">'+(row.isBase ? '✅ Target' : navDStr)+'</td>';
+      html += '<td>'+(row.moic ? row.moic+'x' : '—')+'</td>';
+      html += '<td class="'+moicDCls+'">'+(row.isBase ? '✅ Target' : moicDStr)+'</td>';
+      html += '<td class="'+irrCls+'">'+row.irr+'%</td>';
+      html += '<td class="'+irrD2Cls+'">'+(row.isBase ? '✅ Target' : irrD2Str)+'</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+  }
+
+  document.getElementById('rightPanel').innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DELTA PANEL BUILDER — current vs required
+   ══════════════════════════════════════════════════════════ */
+function buildDeltaPanel(r, mode) {
+  var rows = [];
+
+  if (mode === 'NAV') {
+    var navDelta = r.solvedValue - r.currentNAV;
+    var navDir   = navDelta >= 0 ? 'pos' : 'neg';
+    rows.push({ label:'Current NAV',  value:'$'+fmtNum(r.currentNAV), cls:'current' });
+    rows.push({ label:'Required NAV', value:'$'+fmtNum(r.solvedValue), cls:'target'  });
+    rows.push({ type:'divider' });
+    rows.push({ type:'gap', label: navDelta >= 0 ? 'NAV Gap (need more)' : 'NAV Surplus',
+                value: '$'+fmtNum(Math.abs(navDelta)), dir: navDir });
+
+  } else if (mode === 'MOIC') {
+    var moicDelta = r.solvedValue - (r.impliedMOIC || 0);
+    // current MOIC from snapshot
+    var key  = document.getElementById('selEntity').value;
+    var snap = BUNDLE.snapshot && BUNDLE.snapshot[key];
+    var curMoic = snap ? snap.moic : 0;
+    moicDelta    = r.solvedValue - curMoic;
+    var mDir     = moicDelta >= 0 ? 'pos' : 'neg';
+    rows.push({ label:'Current MOIC',  value: curMoic ? curMoic+'x' : '—', cls:'current' });
+    rows.push({ label:'Required MOIC', value: r.solvedValue+'x', cls:'target' });
+    rows.push({ type:'divider' });
+    rows.push({ type:'gap', label: moicDelta >= 0 ? 'MOIC Gap' : 'MOIC Surplus',
+                value: Math.abs(moicDelta).toFixed(2)+'x', dir: mDir });
+
+  } else if (mode === 'HOLD') {
+    rows.push({ label:'Current NAV',   value: '$'+fmtNum(r.currentNAV), cls:'current' });
+    rows.push({ label:'Months needed', value: r.solvedValue+' mo', cls:'target' });
+    rows.push({ type:'divider' });
+    rows.push({ type:'gap', label:'Exit by', value: r.impliedExitDate || '—', dir:'pos' });
+
+  } else if (mode === 'CASHFLOW') {
+    var cfSign = r.solvedValue >= 0 ? 'Distribution' : 'Capital Call';
+    rows.push({ label:'Direction',    value: cfSign, cls:'current' });
+    rows.push({ label:'Amount today', value: '$'+fmtNum(Math.abs(r.solvedValue)), cls:'target' });
+    rows.push({ type:'divider' });
+    var irrMove = (r.achievedIRR - r.currentIRR).toFixed(2);
+    rows.push({ type:'gap', label:'IRR move',
+                value: (irrMove >= 0 ? '+' : '')+irrMove+'%',
+                dir:   irrMove >= 0 ? 'pos' : 'neg' });
+  }
+
+  return rows;
+}
+
+/* ══════════════════════════════════════════════════════════
+   METRICS ROW BUILDER — with inline delta sub-lines
+   ══════════════════════════════════════════════════════════ */
+function buildMetricCells(r) {
+  var cells = [];
+  var key   = document.getElementById('selEntity').value;
+  var snap  = BUNDLE.snapshot && BUNDLE.snapshot[key];
+
+  // 1. Current IRR → Target IRR delta
+  var irrGap     = (r.targetIRR - r.currentIRR).toFixed(2);
+  var irrGapDir  = irrGap >= 0 ? 'pos' : 'neg';
+  cells.push({
+    val:      r.currentIRR+'%',
+    lbl:      'Current IRR',
+    delta:    (irrGap >= 0 ? '+' : '') + irrGap + '% to target',
+    deltaDir: irrGapDir
+  });
+
+  // 2. Target IRR (no delta — this is the goal)
+  cells.push({ val: r.targetIRR+'%', lbl: 'Target IRR', cls: 'up' });
+
+  // 3. Mode-specific middle cell
+  if (curMode === 'NAV') {
+    var navDelta = r.solvedValue - r.currentNAV;
+    cells.push({
+      val:      '$'+fmtNum(r.solvedValue),
+      lbl:      'Required NAV',
+      delta:    (navDelta >= 0 ? '+$' : '-$') + fmtNum(Math.abs(navDelta)) + ' vs current',
+      deltaDir: navDelta >= 0 ? 'pos' : 'neg'
+    });
+  } else if (curMode === 'MOIC') {
+    var curMoic2   = snap ? snap.moic : 0;
+    var moicDelta2 = (r.solvedValue - curMoic2).toFixed(2);
+    cells.push({
+      val:      r.solvedValue+'x',
+      lbl:      'Required MOIC',
+      delta:    (moicDelta2 >= 0 ? '+' : '') + moicDelta2 + 'x vs current',
+      deltaDir: moicDelta2 >= 0 ? 'pos' : 'neg'
+    });
+  } else if (curMode === 'HOLD') {
+    cells.push({ val: r.solvedValue+' mo', lbl: 'Months to Exit', delta: r.impliedExitDate, deltaDir:'neu' });
+  } else if (curMode === 'CASHFLOW') {
+    cells.push({
+      val:      '$'+fmtNum(Math.abs(r.solvedValue)),
+      lbl:      r.solvedValue >= 0 ? 'Distribution' : 'Capital Call',
+      delta:    r.solvedValue >= 0 ? 'Return to LPs now' : 'Additional call',
+      deltaDir: r.solvedValue >= 0 ? 'pos' : 'neg'
+    });
+  }
+
+  // 4. Invested capital
+  cells.push({ val: '$'+fmtNum(r.invested), lbl: 'Invested Capital', cls: '' });
+
+  return cells.slice(0, 4);
+}
+
+/* ── Helpers ──────────────────────────────────────────── */
+function modeTitle(m) {
+  return {
+    NAV:      'Required Exit NAV',
+    MOIC:     'Required Exit Multiple',
+    HOLD:     'Minimum Hold Period',
+    CASHFLOW: 'Required Cashflow'
+  }[m] || m;
+}
+
+function fmtNum(n) {
+  return Math.abs(n).toLocaleString('en-US', {maximumFractionDigits:0});
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function resetForm() {
+  document.getElementById('inTargetIRR').value   = 20;
+  document.getElementById('inNAVOverride').value = '';
+  populateQuarters();
+  onEntityChange();
+  selectMode('NAV');
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="result-placeholder"><div class="big-icon">🎯</div>' +
+    '<p>Select an entity and target IRR, then click <strong>Solve</strong>.</p></div>';
+}
+
+/* ── Tooltip positioning (fixed strategy) ── */
+document.addEventListener('mouseover', function(e) {
+  if (e.target.classList && e.target.classList.contains('info-icon')) {
+    var tooltip = e.target.parentElement.querySelector('.info-tooltip');
+    if (tooltip) {
+      var rect = e.target.getBoundingClientRect();
+      // Position below and slightly to the right of the icon
+      var top  = rect.bottom + 6;
+      var left = rect.left - 60;
+      // Ensure it doesn't overflow right edge
+      if (left + 230 > window.innerWidth) left = window.innerWidth - 240;
+      // Ensure it doesn't overflow left
+      if (left < 4) left = 4;
+      // Ensure doesn't overflow bottom
+      if (top + 120 > window.innerHeight) top = rect.top - 120;
+      tooltip.style.top  = top + 'px';
+      tooltip.style.left = left + 'px';
+    }
+  }
+});
+</script>
+</body>
+</html>

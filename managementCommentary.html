@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   MANAGEMENT COMMENTARY — FINANCE TERMINAL THEME
+   ═══════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  background: #0d1117; color: #c9d1d9; font-size: 12.5px;
+  overflow-x: hidden; height: 100vh; display: flex; flex-direction: column;
+}
+
+/* ── Header ── */
+.mc-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 28px;
+  background: linear-gradient(135deg, #0f1923 0%, #162033 100%);
+  border-bottom: 1px solid #21262d; flex-shrink: 0;
+}
+.mc-header h1 { font-size: 17px; font-weight: 600; color: #f0f6fc; letter-spacing: -0.3px; }
+.mc-subtitle  { font-size: 11px; color: #8b949e; margin-top: 3px; }
+.mc-firm-irr  { text-align: right; }
+.mc-big-num   { font-size: 30px; font-weight: 700; color: #58a6ff; display: block; line-height: 1.1; }
+.mc-label     { font-size: 9px; text-transform: uppercase; color: #8b949e; letter-spacing: 1px; }
+.mc-delta     { font-size: 12px; font-weight: 600; display: block; margin-top: 2px; }
+.mc-delta.pos { color: #3fb950; }
+.mc-delta.neg { color: #f85149; }
+
+/* ── KPI Bar ── */
+.kpi-bar {
+  display: flex; gap: 6px; padding: 10px 28px;
+  background: #161b22; border-bottom: 1px solid #21262d; flex-wrap: wrap; flex-shrink: 0;
+}
+.kpi-card {
+  padding: 7px 13px; border-radius: 6px; background: #0d1117;
+  border: 1px solid #21262d; min-width: 90px;
+}
+.kc-label { font-size: 9px; text-transform: uppercase; color: #8b949e; letter-spacing: 0.6px; }
+.kc-val   { font-size: 15px; font-weight: 700; color: #f0f6fc; margin-top: 1px; }
+.kc-val.green { color: #3fb950; }
+.kc-val.amber { color: #d29922; }
+.kc-val.red   { color: #f85149; }
+
+/* ── Tab bar ── */
+.tab-bar {
+  display: flex; background: #161b22;
+  border-bottom: 2px solid #21262d; padding: 0 28px; flex-shrink: 0;
+}
+.tab {
+  padding: 9px 16px; font-size: 11.5px; color: #8b949e; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s;
+  white-space: nowrap;
+}
+.tab:hover  { color: #c9d1d9; }
+.tab.active { color: #58a6ff; border-bottom-color: #58a6ff; font-weight: 600; }
+
+/* ── Panels ── */
+.mc-body   { flex: 1; overflow-y: auto; padding: 20px 28px; }
+.panel     { display: none; }
+.panel.active { display: block; }
+
+/* ── Sections ── */
+.section-title {
+  font-size: 13px; font-weight: 600; color: #f0f6fc;
+  margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #21262d;
+}
+.section-title.tw-title { border-bottom-color: #238636; }
+.section-title.hw-title { border-bottom-color: #da3633; }
+
+/* ── Tables ── */
+.mc-table          { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; }
+.mc-table th       { background: #161b22; color: #8b949e; padding: 7px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #30363d; position: sticky; top: 0; }
+.mc-table td       { padding: 6px 10px; border-bottom: 1px solid #21262d; }
+.mc-table tr:hover { background: #161b22; }
+.entity-name       { font-weight: 600; color: #f0f6fc; }
+
+.irr-cell.strong   { color: #3fb950; font-weight: 700; }
+.irr-cell.moderate { color: #d29922; font-weight: 600; }
+.irr-cell.below    { color: #db8b00; font-weight: 600; }
+.irr-cell.negative { color: #f85149; font-weight: 700; }
+
+.delta-cell.pos { color: #3fb950; }
+.delta-cell.neg { color: #f85149; }
+.pos { color: #3fb950; }
+.neg { color: #f85149; }
+.momentum-cell { font-weight: 600; font-size: 11px; }
+
+.top-deal td    { border-left: 3px solid #238636; }
+.bottom-deal td { border-left: 3px solid #da3633; }
+
+/* ── Two-column ── */
+.two-col { display: flex; gap: 14px; margin-bottom: 18px; }
+.col     { flex: 1; }
+
+/* ── Tailwind / Headwind boxes ── */
+.tw-box           { padding: 10px; border-radius: 8px; background: #0d1117; border: 1px solid #21262d; }
+.tw-box.tailwind  { border-left: 3px solid #238636; }
+.tw-box.headwind  { border-left: 3px solid #da3633; }
+.tw-item          { display: flex; justify-content: space-between; padding: 5px 4px; border-bottom: 1px solid #161b22; }
+.tw-item:last-child { border-bottom: none; }
+.tw-name          { color: #c9d1d9; }
+.tw-bps           { font-weight: 700; font-size: 12px; }
+.tw-bps.pos       { color: #3fb950; }
+.tw-bps.neg       { color: #f85149; }
+
+/* ── Commentary box ── */
+.commentary-box   { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 16px; margin-bottom: 18px; line-height: 1.7; }
+.commentary-box p { color: #c9d1d9; }
+
+/* ── Attribution cards ── */
+.attr-card    { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+.attr-header  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; color: #f0f6fc; font-size: 13px; }
+.attr-delta.pos { color: #3fb950; font-size: 12px; }
+.attr-delta.neg { color: #f85149; font-size: 12px; }
+.attr-row       { display: flex; align-items: center; margin-bottom: 4px; gap: 8px; }
+.attr-name      { width: 130px; font-size: 11px; color: #8b949e; flex-shrink: 0; }
+.attr-bar-container { flex: 1; height: 10px; background: #161b22; border-radius: 4px; overflow: hidden; }
+.attr-bar       { height: 100%; border-radius: 4px; transition: width .4s; }
+.attr-bar.pos   { background: linear-gradient(90deg, #238636, #3fb950); }
+.attr-bar.neg   { background: linear-gradient(90deg, #f85149, #da3633); }
+.attr-val       { width: 65px; text-align: right; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+.attr-summary   { margin-top: 8px; font-size: 11px; line-height: 1.6; }
+.tw-label       { display: block; color: #3fb950; }
+.hw-label       { display: block; color: #f85149; }
+
+/* ── Charts ── */
+.chart-container {
+  background: #0d1117; border: 1px solid #21262d; border-radius: 8px;
+  padding: 14px; margin-bottom: 18px; height: 270px; position: relative;
+}
+
+/* ── Narrative ── */
+.narrative-report   { max-width: 900px; }
+.narrative-section  { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 16px; margin-bottom: 12px; line-height: 1.75; }
+.narrative-section h3 { color: #58a6ff; font-size: 13px; margin-bottom: 8px; }
+.narrative-section p  { color: #c9d1d9; font-size: 12.5px; }
+
+/* ── Error ── */
+.error-box { padding: 40px; text-align: center; color: #f85149; font-size: 14px; }
+
+/* ── PDF Export Button ── */
+.btn-pdf {
+  background: linear-gradient(135deg, #1565c0, #1a73e8);
+  color: #fff; border: none; border-radius: 6px;
+  padding: 8px 16px; font-size: 11px; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  transition: all .2s; letter-spacing: 0.3px;
+}
+.btn-pdf:hover { background: linear-gradient(135deg, #0d47a1, #1565c0); }
+.btn-pdf:disabled { opacity: .5; cursor: not-allowed; }
+.btn-pdf .pdf-spin {
+  display: none; width: 14px; height: 14px;
+  border: 2px solid #ffffff40; border-top-color: #fff;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+.btn-pdf.loading .pdf-spin { display: inline-block; }
+.btn-pdf.loading .pdf-icon { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ── */
+@media (max-width: 800px) {
+  .two-col { flex-direction: column; }
+  .kpi-bar { gap: 4px; }
+  .kpi-card { min-width: 70px; padding: 5px 8px; }
+}
+</style>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script type="module" src="../engine/bridge.js"></script>
+</head>
+
+<body>
+
+<!-- Populated by init() -->
+<div id="app">
+  <div class="error-box">Loading commentary data…</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   CLIENT-SIDE — PARSE BUNDLE, RENDER UI, BUILD CHARTS
+   ═══════════════════════════════════════════════════════ */
+
+var B = {};  // global bundle
+
+// ── Init ──
+// ── Excel Add-in async init — replaces JSON.parse(<?= bundle ?>) ─────────────
+(async function() {
+  for (var _w = 0; _w < 100 && typeof window.IVP_INIT !== 'function'; _w++) {
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+  if (typeof window.IVP_INIT !== 'function') {
+    document.getElementById('app').innerHTML = '<div class="error-box">IVP Engine not loaded. Check engine/bridge.js.</div>';
+    return;
+  }
+  await window.IVP_INIT();
+  B = window.IVP_BUNDLE || {};
+
+  if (!B || B.error) {
+    document.getElementById('app').innerHTML =
+      '<div class="error-box">Bundle error: ' + ((B && B.error) || 'unknown') + '</div>';
+    return;
+  }
+  render();
+})();
+
+
+/* ─────────────────────────────────────────────────────
+   RENDER — builds the entire DOM from the bundle
+   ───────────────────────────────────────────────────── */
+function render() {
+  var N = buildNarrative();  // generate all narratives first
+
+  // ── Derived firm metrics ──
+  var totalNAV  = B.fundSummaries.reduce(function(s,x){ return s + x.nav; }, 0);
+  var totalInv  = B.fundSummaries.reduce(function(s,x){ return s + x.invested; }, 0);
+  var totalDist = B.fundSummaries.reduce(function(s,x){ return s + x.distributed; }, 0);
+  var firmMOIC  = totalInv > 0 ? (totalDist + totalNAV) / totalInv : 0;
+  var firmDPI   = totalInv > 0 ? totalDist / totalInv : 0;
+  var firmRVPI  = totalInv > 0 ? totalNAV / totalInv : 0;
+  var latest    = B.firmTrend[B.firmTrend.length - 1] || { irr: 0 };
+  var prev      = B.firmTrend.length > 1 ? B.firmTrend[B.firmTrend.length - 2] : null;
+  var delta     = prev ? (latest.irr - prev.irr) * 100 : 0;
+
+  var fundsSorted = B.fundSummaries.slice().sort(function(a,b){ return b.irr - a.irr; });
+
+  // ── Aggregate tailwinds / headwinds ──
+  var aggTW = {}, aggHW = {};
+  B.l1vals.forEach(function(l1) {
+    var a = B.fundAttribution[l1];
+    if (!a || !a.valid) return;
+    a.tailwinds.forEach(function(t) { aggTW[t.name] = (aggTW[t.name] || 0) + t.bps; });
+    a.headwinds.forEach(function(h) { aggHW[h.name] = (aggHW[h.name] || 0) + h.bps; });
+  });
+  var twArr = toSorted(aggTW, 'desc');
+  var hwArr = toSorted(aggHW, 'asc');
+
+  // ════════════════════════════════════════════
+  //  BUILD HTML
+  // ════════════════════════════════════════════
+  var h = '';
+
+  // ── HEADER ──
+  h += '<div class="mc-header">' +
+    '<div>' +
+      '<h1>Management Commentary</h1>' +
+      '<div class="mc-subtitle">Period: ' + B.firstQuarter + ' → ' + B.lastQuarter + ' &nbsp;|&nbsp; Generated: ' + B.generatedAt + '</div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:16px;">' +
+      '<button class="btn-pdf" id="btnPDF" onclick="exportPDF()">' +
+        '<span class="pdf-icon">📄</span><span class="pdf-spin"></span> Export PDF Report</button>' +
+      '<div class="mc-firm-irr">' +
+        '<span class="mc-big-num">' + pct(latest.irr, 1) + '%</span>' +
+        '<span class="mc-label">Firm Net IRR</span>' +
+        '<span class="mc-delta ' + (delta >= 0 ? 'pos' : 'neg') + '">' +
+          (delta >= 0 ? '▲' : '▼') + ' ' + Math.abs(delta).toFixed(1) + '% QoQ</span>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── KPI BAR ──
+  h += '<div class="kpi-bar">' +
+    kpi('Active ' + B.l1Label + 's', B.fundSummaries.length, '') +
+    kpi('Total NAV', '$' + fmtM(totalNAV), '') +
+    kpi('Total Invested', '$' + fmtM(totalInv), '') +
+    kpi('Distributed', '$' + fmtM(totalDist), '') +
+    kpi('Firm MOIC', firmMOIC.toFixed(2) + 'x', firmMOIC >= 1.5 ? 'green' : firmMOIC >= 1.0 ? 'amber' : 'red') +
+    kpi('DPI', firmDPI.toFixed(2) + 'x', '') +
+    kpi('RVPI', firmRVPI.toFixed(2) + 'x', '') +
+  '</div>';
+
+  // ── TABS ──
+  h += '<div class="tab-bar">' +
+    '<div class="tab active" data-tab="overview">Executive Overview</div>' +
+    '<div class="tab" data-tab="trends">IRR Trends</div>' +
+    '<div class="tab" data-tab="deals">Deal Performance</div>' +
+    '<div class="tab" data-tab="attribution">Attribution &amp; Drivers</div>' +
+    '<div class="tab" data-tab="narrative">Detailed Narrative</div>' +
+  '</div>';
+
+  h += '<div class="mc-body">';
+
+  // ══════════════════════════════════════════════════════════
+  // TAB 1: EXECUTIVE OVERVIEW
+  // ══════════════════════════════════════════════════════════
+  h += '<div id="panel-overview" class="panel active">';
+
+  // Fund table
+  h += '<div class="section-title">' + B.l1Label + ' Performance Summary — ' + B.lastQuarter + '</div>';
+  h += '<table class="mc-table"><thead><tr>' +
+    '<th>' + B.l1Label + '</th><th>Net IRR</th><th>QoQ Δ</th><th>MOIC</th><th>DPI</th><th>RVPI</th>' +
+    '<th>Invested</th><th>NAV</th><th>Momentum</th></tr></thead><tbody>';
+  fundsSorted.forEach(function(f) {
+    var tr = B.fundTrends[f.entity];
+    var pr = tr.length >= 2 ? tr[tr.length - 2] : null;
+    var d  = pr && pr.irr !== null ? (f.irr - pr.irr) * 100 : 0;
+    var sp = B.subPeriodInsights[f.entity] || {};
+    var ic = f.irr > 0.15 ? 'strong' : f.irr > 0.08 ? 'moderate' : f.irr > 0 ? 'below' : 'negative';
+
+    h += '<tr><td class="entity-name">' + f.entity + '</td>' +
+      '<td class="irr-cell ' + ic + '">' + pct(f.irr, 2) + '%</td>' +
+      '<td class="delta-cell ' + (d >= 0 ? 'pos' : 'neg') + '">' + (d >= 0 ? '+' : '') + d.toFixed(1) + '%</td>' +
+      '<td>' + f.moic.toFixed(2) + 'x</td>' +
+      '<td>' + f.dpi.toFixed(2) + 'x</td><td>' + f.rvpi.toFixed(2) + 'x</td>' +
+      '<td>$' + fmtM(f.invested) + '</td><td>$' + fmtM(f.nav) + '</td>' +
+      '<td class="momentum-cell">' + momentum(sp.momentum) + '</td></tr>';
+  });
+  h += '</tbody></table>';
+
+  // Headwinds / Tailwinds
+  h += '<div class="two-col"><div class="col">' +
+    '<div class="section-title tw-title">🌬️ Tailwinds (Positive Drivers)</div>' +
+    '<div class="tw-box tailwind">';
+  if (twArr.length === 0) h += '<div class="tw-item"><span class="tw-name">No significant tailwinds</span></div>';
+  twArr.forEach(function(t) {
+    h += '<div class="tw-item"><span class="tw-name">' + t.name + '</span><span class="tw-bps pos">+' + t.bps.toFixed(0) + ' bps</span></div>';
+  });
+  h += '</div></div><div class="col">' +
+    '<div class="section-title hw-title">🧱 Headwinds (Negative Drivers)</div>' +
+    '<div class="tw-box headwind">';
+  if (hwArr.length === 0) h += '<div class="tw-item"><span class="tw-name">No significant headwinds</span></div>';
+  hwArr.forEach(function(hw) {
+    h += '<div class="tw-item"><span class="tw-name">' + hw.name + '</span><span class="tw-bps neg">' + hw.bps.toFixed(0) + ' bps</span></div>';
+  });
+  h += '</div></div></div>';
+
+  // Executive narrative
+  h += '<div class="commentary-box"><div class="section-title">📝 Executive Summary</div><p>' + N.executive + '</p></div>';
+  h += '</div>'; // panel-overview
+
+
+  // ══════════════════════════════════════════════════════════
+  // TAB 2: IRR TRENDS
+  // ══════════════════════════════════════════════════════════
+  h += '<div id="panel-trends" class="panel">';
+  h += '<div class="section-title">📈 Firm-Level Net IRR Trend</div>' +
+    '<div class="chart-container"><canvas id="firmTrendChart"></canvas></div>';
+  h += '<div class="section-title">' + B.l1Label + '-Level Net IRR Trends</div>' +
+    '<div class="chart-container"><canvas id="fundTrendChart"></canvas></div>';
+  h += '<div class="section-title">📊 Sub-Period IRR (Quarterly Returns)</div>' +
+    '<div class="chart-container"><canvas id="subPeriodChart"></canvas></div>';
+
+  // Sub-period insights table
+  h += '<div class="section-title">Sub-Period Insights by ' + B.l1Label + '</div>';
+  h += '<table class="mc-table"><thead><tr>' +
+    '<th>' + B.l1Label + '</th><th>Best Qtr</th><th>Best Sub-IRR</th><th>Worst Qtr</th><th>Worst Sub-IRR</th>' +
+    '<th>Accel Qs</th><th>Decel Qs</th><th>Momentum</th></tr></thead><tbody>';
+  B.l1vals.forEach(function(l1) {
+    var sp = B.subPeriodInsights[l1]; if (!sp) return;
+    h += '<tr><td class="entity-name">' + l1 + '</td>' +
+      '<td>' + (sp.bestQ ? sp.bestQ.quarter : '—') + '</td>' +
+      '<td class="pos">' + (sp.bestQ ? pct(sp.bestQ.subIRR, 1) + '%' : '—') + '</td>' +
+      '<td>' + (sp.worstQ ? sp.worstQ.quarter : '—') + '</td>' +
+      '<td class="neg">' + (sp.worstQ ? pct(sp.worstQ.subIRR, 1) + '%' : '—') + '</td>' +
+      '<td>' + sp.accelQs + '/' + sp.totalQs + '</td><td>' + sp.decelQs + '/' + sp.totalQs + '</td>' +
+      '<td class="momentum-cell">' + momentum(sp.momentum) + '</td></tr>';
+  });
+  h += '</tbody></table></div>'; // panel-trends
+
+
+  // ══════════════════════════════════════════════════════════
+  // TAB 3: DEAL PERFORMANCE
+  // ══════════════════════════════════════════════════════════
+  h += '<div id="panel-deals" class="panel">';
+  if (B.dealPerformance.length === 0) {
+    h += '<div class="commentary-box"><p>Deal-level analysis requires ≥2 hierarchy levels. Current: ' + B.maxLevel + '.</p></div>';
+  } else {
+    var top5 = B.dealPerformance.slice(0, 5);
+    var bot5 = B.dealPerformance.slice(-5).reverse();
+
+    h += '<div class="section-title">🏆 Top Performing ' + B.l2Label + 's</div>';
+    h += dealTable(top5, 'top-deal', true);
+
+    h += '<div class="section-title" style="margin-top:18px">⚠️ Underperforming ' + B.l2Label + 's (Watch List)</div>';
+    h += dealTable(bot5, 'bottom-deal', false);
+
+    h += '<div class="section-title" style="margin-top:18px">' + B.l2Label + ' IRR Distribution</div>' +
+      '<div class="chart-container"><canvas id="dealDistChart"></canvas></div>';
+    h += '<div class="commentary-box"><div class="section-title">📝 Deal Commentary</div><p>' + N.deals + '</p></div>';
+  }
+  h += '</div>'; // panel-deals
+
+
+  // ══════════════════════════════════════════════════════════
+  // TAB 4: ATTRIBUTION & DRIVERS
+  // ══════════════════════════════════════════════════════════
+  h += '<div id="panel-attribution" class="panel">';
+  h += '<div class="section-title">7-Bucket IRR Attribution by ' + B.l1Label + ' (' + B.firstQuarter + ' → ' + B.lastQuarter + ')</div>';
+
+  B.l1vals.forEach(function(l1) {
+    var a = B.fundAttribution[l1];
+    if (!a || !a.valid) {
+      h += '<div class="attr-card"><div class="attr-header">' + l1 + '</div><p style="color:#8b949e">Insufficient data (need ≥2 quarters)</p></div>';
+      return;
+    }
+    h += '<div class="attr-card"><div class="attr-header"><span>' + l1 + '</span>' +
+      '<span class="attr-delta ' + (a.totalDelta >= 0 ? 'pos' : 'neg') + '">' +
+        pct(a.startIRR, 1) + '% → ' + pct(a.endIRR, 1) + '% (' + (a.totalDelta >= 0 ? '+' : '') + a.totalDelta.toFixed(0) + ' bps)</span></div>';
+    h += '<div class="attr-buckets">';
+    var maxBPS = Math.max.apply(null, a.impacts.map(function(i){ return Math.abs(i.bps); })) || 1;
+    a.impacts.forEach(function(imp) {
+      var w = Math.min(100, (Math.abs(imp.bps) / maxBPS) * 100);
+      var c = imp.bps >= 0 ? 'pos' : 'neg';
+      h += '<div class="attr-row">' +
+        '<span class="attr-name">' + imp.name + '</span>' +
+        '<div class="attr-bar-container"><div class="attr-bar ' + c + '" style="width:' + w + '%"></div></div>' +
+        '<span class="attr-val ' + c + '">' + (imp.bps >= 0 ? '+' : '') + imp.bps.toFixed(0) + ' bps</span></div>';
+    });
+    h += '</div>';
+    h += '<div class="attr-summary">' +
+      '<span class="tw-label">✅ Tailwinds: ' + a.tailwinds.map(function(t){ return t.name + ' (+' + t.bps.toFixed(0) + ')'; }).join(', ') + '</span>' +
+      '<span class="hw-label">❌ Headwinds: ' + a.headwinds.map(function(hh){ return hh.name + ' (' + hh.bps.toFixed(0) + ')'; }).join(', ') + '</span></div>';
+    h += '</div>';
+  });
+
+  h += '<div class="section-title" style="margin-top:18px">Aggregate Attribution Waterfall</div>' +
+    '<div class="chart-container"><canvas id="attrWaterfallChart"></canvas></div>';
+  h += '</div>'; // panel-attribution
+
+
+  // ══════════════════════════════════════════════════════════
+  // TAB 5: DETAILED NARRATIVE
+  // ══════════════════════════════════════════════════════════
+  h += '<div id="panel-narrative" class="panel"><div class="narrative-report">';
+
+  var sections = [
+    ['1. Firm-Level Performance', N.firm],
+    ['2. ' + B.l1Label + '-Level Analysis', B.l1vals.map(function(l1){ return N.funds[l1]; }).join('')],
+    ['3. IRR Attribution & Driver Analysis', N.attribution],
+    ['4. Sub-Period IRR & Momentum', N.subperiod]
+  ];
+  if (B.dealPerformance.length > 0)
+    sections.push(['5. ' + B.l2Label + '-Level Performance', N.deals]);
+  sections.push(['6. Headwinds & Tailwinds', N.headwindsTailwinds]);
+  sections.push(['7. Outlook & Recommendations', N.outlook]);
+
+  sections.forEach(function(s) {
+    h += '<div class="narrative-section"><h3>' + s[0] + '</h3><p>' + s[1] + '</p></div>';
+  });
+
+  h += '</div></div>'; // narrative-report, panel-narrative
+  h += '</div>'; // mc-body
+
+  // ── Inject into DOM ──
+  document.getElementById('app').innerHTML = h;
+
+  // ── Wire tabs ──
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.getElementById('panel-' + tab.getAttribute('data-tab')).classList.add('active');
+      tab.classList.add('active');
+    });
+  });
+
+  // ── Build charts (deferred so canvases exist) ──
+  setTimeout(buildCharts, 100);
+}
+
+
+/* ─────────────────────────────────────────────────────
+   CHARTS (Chart.js)
+   ───────────────────────────────────────────────────── */
+function buildCharts() {
+  var COLORS = ['#58a6ff','#3fb950','#d29922','#f85149','#bc8cff','#f778ba','#79c0ff','#56d364'];
+  var gridColor = '#21262d';
+  var tickColor = '#8b949e';
+
+  Chart.defaults.color = tickColor;
+  Chart.defaults.font.size = 10;
+
+  var baseScales = {
+    x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+    y: { ticks: { color: tickColor }, grid: { color: gridColor } }
+  };
+
+  // 1. Firm trend (line + bar)
+  tryChart('firmTrendChart', {
+    type: 'line',
+    data: {
+      labels: B.quarters,
+      datasets: [
+        {
+          label: 'Firm Net IRR %', data: B.firmTrend.map(function(f){ return pctN(f.irr); }),
+          borderColor: '#58a6ff', backgroundColor: 'rgba(88,166,255,0.1)',
+          tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: '#58a6ff'
+        },
+        {
+          label: 'Firm NAV ($)', data: B.firmTrend.map(function(f){ return f.nav; }),
+          borderColor: '#3fb95080', type: 'bar', backgroundColor: '#3fb95030', yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: tickColor } } },
+      scales: {
+        x: baseScales.x,
+        y:  { title: { display: true, text: 'IRR %', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
+        y1: { position: 'right', title: { display: true, text: 'NAV $', color: tickColor }, ticks: { color: tickColor }, grid: { display: false } }
+      }
+    }
+  });
+
+  // 2. Fund IRR trends
+  var fundDS = B.l1vals.map(function(l1, i) {
+    return {
+      label: l1,
+      data: B.fundTrends[l1].map(function(t){ return t.irr !== null ? pctN(t.irr) : null; }),
+      borderColor: COLORS[i % COLORS.length], tension: 0.3, fill: false, pointRadius: 3
+    };
+  });
+  tryChart('fundTrendChart', {
+    type: 'line',
+    data: { labels: B.quarters, datasets: fundDS },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tickColor } } }, scales: baseScales }
+  });
+
+  // 3. Sub-period bar
+  var subDS = B.l1vals.map(function(l1, i) {
+    return {
+      label: l1,
+      data: B.fundTrends[l1].map(function(t){ return t.subIRR !== null ? pctN(t.subIRR) : null; }),
+      backgroundColor: COLORS[i % COLORS.length] + '80',
+      borderColor: COLORS[i % COLORS.length], borderWidth: 1
+    };
+  });
+  tryChart('subPeriodChart', {
+    type: 'bar',
+    data: { labels: B.quarters, datasets: subDS },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tickColor } } }, scales: baseScales }
+  });
+
+  // 4. Deal distribution
+  if (B.dealPerformance.length > 0 && document.getElementById('dealDistChart')) {
+    tryChart('dealDistChart', {
+      type: 'bar',
+      data: {
+        labels: B.dealPerformance.map(function(d){ return d.deal; }),
+        datasets: [{
+          data: B.dealPerformance.map(function(d){ return pctN(d.irr); }),
+          backgroundColor: B.dealPerformance.map(function(d){
+            return d.irr > 0.15 ? '#3fb950' : d.irr > 0.08 ? '#d29922' : d.irr > 0 ? '#db8b00' : '#f85149';
+          })
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: tickColor, font: { size: 9 }, maxRotation: 45 }, grid: { color: gridColor } },
+          y: { title: { display: true, text: 'Net IRR %', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } }
+        }
+      }
+    });
+  }
+
+  // 5. Attribution waterfall (first valid fund)
+  var firstValid = null;
+  B.l1vals.forEach(function(l1) { if (!firstValid && B.fundAttribution[l1] && B.fundAttribution[l1].valid) firstValid = l1; });
+  if (firstValid && document.getElementById('attrWaterfallChart')) {
+    var attr = B.fundAttribution[firstValid];
+    var wfLabels = ['Start'];
+    var wfData   = [pctN(attr.startIRR)];
+    var wfColors = ['#58a6ff'];
+    attr.impacts.forEach(function(imp) {
+      wfLabels.push(imp.name);
+      wfData.push(imp.bps);
+      wfColors.push(imp.bps >= 0 ? '#3fb950' : '#f85149');
+    });
+    wfLabels.push('End');
+    wfData.push(pctN(attr.endIRR));
+    wfColors.push('#58a6ff');
+
+    tryChart('attrWaterfallChart', {
+      type: 'bar',
+      data: { labels: wfLabels, datasets: [{ data: wfData, backgroundColor: wfColors }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, title: { display: true, text: firstValid + ' Attribution Waterfall', color: '#f0f6fc' } },
+        scales: {
+          x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { color: gridColor } },
+          y: { title: { display: true, text: 'IRR % / BPS', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } }
+        }
+      }
+    });
+  }
+}
+
+function tryChart(id, config) {
+  var el = document.getElementById(id);
+  if (el) new Chart(el, config);
+}
+
+
+/* ─────────────────────────────────────────────────────
+   NARRATIVE GENERATOR — all client-side
+   ───────────────────────────────────────────────────── */
+function buildNarrative() {
+  var N = { funds: {} };
+  var latest     = B.firmTrend[B.firmTrend.length - 1] || { irr: 0 };
+  var prev       = B.firmTrend.length > 1 ? B.firmTrend[B.firmTrend.length - 2] : null;
+  var fSorted    = B.fundSummaries.slice().sort(function(a,b){ return b.irr - a.irr; });
+  var totalNAV   = B.fundSummaries.reduce(function(s,x){ return s + x.nav; }, 0);
+  var totalInv   = B.fundSummaries.reduce(function(s,x){ return s + x.invested; }, 0);
+  var totalDist  = B.fundSummaries.reduce(function(s,x){ return s + x.distributed; }, 0);
+  var firmMOIC   = totalInv > 0 ? (totalDist + totalNAV) / totalInv : 0;
+  var firmDPI    = totalInv > 0 ? totalDist / totalInv : 0;
+  var dStr       = prev ? ((latest.irr - prev.irr) * 100 >= 0 ? '+' : '') + ((latest.irr - prev.irr) * 100).toFixed(1) + '%' : 'N/A';
+  var topF       = fSorted[0], botF = fSorted[fSorted.length - 1];
+  var strongFs   = fSorted.filter(function(f){ return f.irr > 0.15; });
+  var weakFs     = fSorted.filter(function(f){ return f.irr < 0.08; });
+
+  // ── Executive ──
+  N.executive = 'The firm delivered a net IRR of ' + pct(latest.irr, 1) + '% as of ' + B.lastQuarter +
+    ' (' + dStr + ' QoQ), with aggregate MOIC of ' + firmMOIC.toFixed(2) + 'x across ' +
+    B.fundSummaries.length + ' active ' + B.l1Label.toLowerCase() + '(s). ' +
+    'Total capital deployed: $' + fmtM(totalInv) + ', returned to LPs: $' + fmtM(totalDist) + ' (DPI: ' + firmDPI.toFixed(2) + 'x). ' +
+    'Residual NAV: $' + fmtM(totalNAV) + '. ';
+  if (topF && botF && topF !== botF) {
+    N.executive += topF.entity + ' leads at ' + pct(topF.irr, 1) + '% / ' + topF.moic.toFixed(2) + 'x, while ' +
+      botF.entity + ' lags at ' + pct(botF.irr, 1) + '% / ' + botF.moic.toFixed(2) + 'x. ';
+  }
+  if (strongFs.length) N.executive += strongFs.length + ' fund(s) exceed the 15% target. ';
+  if (weakFs.length)   N.executive += weakFs.length + ' fund(s) below the 8% hurdle—requires attention. ';
+
+  // ── Firm ──
+  N.firm = 'Firm-level net IRR tracked from ' + pct(B.firmTrend[0].irr, 1) + '% (' + B.firmTrend[0].quarter + ') to ' +
+    pct(latest.irr, 1) + '% (' + B.lastQuarter + '), a net movement of ' +
+    ((latest.irr - B.firmTrend[0].irr) * 10000).toFixed(0) + ' bps over ' + B.quarters.length + ' quarters. ';
+  var upQ = 0, dnQ = 0;
+  for (var i = 1; i < B.firmTrend.length; i++) { if (B.firmTrend[i].irr > B.firmTrend[i-1].irr) upQ++; else dnQ++; }
+  if (upQ > dnQ) N.firm += 'Upward trajectory (' + upQ + ' improving vs ' + dnQ + ' declining quarters). ';
+  else if (dnQ > upQ) N.firm += 'Under pressure (' + dnQ + ' declining vs ' + upQ + ' improving). ';
+  else N.firm += 'Mixed performance with equal up/down quarters. ';
+  N.firm += 'Current MOIC: ' + firmMOIC.toFixed(2) + 'x (' + (firmMOIC * 100).toFixed(0) + '% total value on invested capital).';
+
+  // ── Per-fund ──
+  B.l1vals.forEach(function(l1) {
+    var f = B.fundSummaries.filter(function(x){ return x.entity === l1; })[0];
+    var a = B.fundAttribution[l1];
+    var sp = B.subPeriodInsights[l1];
+    var tr = B.fundTrends[l1];
+    if (!f) { N.funds[l1] = '<strong>' + l1 + '</strong>: insufficient data.<br>'; return; }
+
+    var perf = f.irr > 0.20 ? 'exceptional' : f.irr > 0.15 ? 'strong' : f.irr > 0.08 ? 'moderate' : f.irr > 0 ? 'below-target' : 'negative';
+    var t = '<strong>' + l1 + '</strong> — Net IRR ' + pct(f.irr, 2) + '% (' + perf + '), MOIC ' + f.moic.toFixed(2) + 'x. ' +
+      '$' + fmtM(f.invested) + ' deployed, $' + fmtM(f.distributed) + ' distributed (DPI ' + f.dpi.toFixed(2) + 'x), $' + fmtM(f.nav) + ' residual (RVPI ' + f.rvpi.toFixed(2) + 'x). ';
+
+    var vt = tr.filter(function(x){ return x.irr !== null; });
+    if (vt.length >= 2) t += 'IRR moved from ' + pct(vt[0].irr, 1) + '% (' + vt[0].quarter + ') to ' + pct(vt[vt.length-1].irr, 1) + '% (' + vt[vt.length-1].quarter + '). ';
+    if (a && a.valid) {
+      if (a.tailwinds.length) t += 'Tailwinds: ' + a.tailwinds.map(function(x){ return x.name + ' (+' + x.bps.toFixed(0) + ' bps)'; }).join(', ') + '. ';
+      if (a.headwinds.length) t += 'Headwinds: ' + a.headwinds.map(function(x){ return x.name + ' (' + x.bps.toFixed(0) + ' bps)'; }).join(', ') + '. ';
+    }
+    if (sp) {
+      t += 'Momentum: ' + sp.momentum + '. ';
+      if (sp.bestQ) t += 'Best: ' + sp.bestQ.quarter + ' (' + pct(sp.bestQ.subIRR, 1) + '%). ';
+      if (sp.worstQ) t += 'Weakest: ' + sp.worstQ.quarter + ' (' + pct(sp.worstQ.subIRR, 1) + '%). ';
+    }
+    N.funds[l1] = t + '<br><br>';
+  });
+
+  // ── Attribution ──
+  N.attribution = 'Across the portfolio, IRR attribution reveals: ';
+  var anyA = false;
+  B.l1vals.forEach(function(l1) {
+    var a = B.fundAttribution[l1]; if (!a || !a.valid) return; anyA = true;
+    N.attribution += l1 + ': ' + (a.totalDelta >= 0 ? '+' : '') + a.totalDelta.toFixed(0) + ' bps (' + pct(a.startIRR,1) + '% → ' + pct(a.endIRR,1) + '%). ';
+    if (a.tailwinds.length) N.attribution += 'Primary driver: ' + a.tailwinds[0].name + ' (+' + a.tailwinds[0].bps.toFixed(0) + ' bps). ';
+    if (a.headwinds.length) N.attribution += 'Biggest drag: ' + a.headwinds[0].name + ' (' + a.headwinds[0].bps.toFixed(0) + ' bps). ';
+  });
+  if (!anyA) N.attribution += 'Insufficient multi-period data. Run Compute across ≥2 quarters.';
+
+  // ── Sub-period ──
+  N.subperiod = 'Sub-period IRR examines quarterly returns to spot momentum shifts. ';
+  B.l1vals.forEach(function(l1) {
+    var sp = B.subPeriodInsights[l1]; if (!sp || !sp.bestQ) return;
+    N.subperiod += l1 + ': ' + sp.accelQs + '/' + sp.totalQs + ' quarters accelerating (>5% sub-IRR). Momentum: ' + sp.momentum + '. ';
+    if (sp.decelQs > sp.accelQs) N.subperiod += 'More decelerating than accelerating—warrants monitoring. ';
+  });
+
+  // ── Deals ──
+  N.deals = '';
+  var top5 = B.dealPerformance.slice(0, 5);
+  var bot5 = B.dealPerformance.slice(-5).reverse();
+  if (top5.length) {
+    N.deals += 'Top performers: ';
+    top5.forEach(function(d, i) {
+      N.deals += d.deal + ' (' + d.fund + ') at ' + pct(d.irr, 1) + '% / ' + d.moic.toFixed(2) + 'x over ' + d.holdMonths + 'mo';
+      N.deals += i < top5.length - 1 ? '; ' : '. ';
+    });
+  }
+  if (bot5.length) {
+    N.deals += 'Watch list: ';
+    bot5.forEach(function(d, i) {
+      N.deals += d.deal + ' (' + d.fund + ') at ' + pct(d.irr, 1) + '% / ' + d.moic.toFixed(2) + 'x';
+      if (d.irr < 0) N.deals += ' (value-destroying)';
+      else if (d.moic < 1) N.deals += ' (below cost)';
+      N.deals += i < bot5.length - 1 ? '; ' : '. ';
+    });
+    N.deals += 'Consider strategic review or exit acceleration.';
+  }
+
+  // ── Headwinds/Tailwinds ──
+  var aggTW = {}, aggHW = {};
+  B.l1vals.forEach(function(l1) {
+    var a = B.fundAttribution[l1]; if (!a || !a.valid) return;
+    a.tailwinds.forEach(function(t) { aggTW[t.name] = (aggTW[t.name] || 0) + t.bps; });
+    a.headwinds.forEach(function(hh) { aggHW[hh.name] = (aggHW[hh.name] || 0) + hh.bps; });
+  });
+  N.headwindsTailwinds = 'Aggregate tailwinds: ';
+  var tw = toSorted(aggTW, 'desc');
+  if (tw.length) tw.forEach(function(t) { N.headwindsTailwinds += t.name + ' (+' + t.bps.toFixed(0) + ' bps); '; });
+  else N.headwindsTailwinds += 'none significant; ';
+  N.headwindsTailwinds += 'Headwinds: ';
+  var hw = toSorted(aggHW, 'asc');
+  if (hw.length) hw.forEach(function(hh) { N.headwindsTailwinds += hh.name + ' (' + hh.bps.toFixed(0) + ' bps); '; });
+  else N.headwindsTailwinds += 'none significant. ';
+  N.headwindsTailwinds += 'Understanding these drivers is critical for portfolio construction and GP-LP communication.';
+
+  // ── Outlook ──
+  N.outlook = 'Looking ahead: ';
+  var accelFs = B.l1vals.filter(function(l1) { var s = B.subPeriodInsights[l1]; return s && s.momentum === 'Accelerating'; });
+  var decelFs = B.l1vals.filter(function(l1) { var s = B.subPeriodInsights[l1]; return s && s.momentum === 'Decelerating'; });
+  if (accelFs.length) N.outlook += accelFs.join(', ') + ' show(s) accelerating momentum—may benefit from follow-on or hold extension. ';
+  if (decelFs.length) N.outlook += decelFs.join(', ') + ' is/are decelerating—review exit timing and operational levers. ';
+  if (weakFs.length)  N.outlook += 'Funds below 8% hurdle require active monitoring. ';
+  N.outlook += 'Fee drag and carry remain structural headwinds addressable through operational efficiency. ' +
+    'Use the Reverse IRR / Backsolve tool to model specific scenarios for IC discussion.';
+
+  return N;
+}
+
+
+/* ─────────────────────────────────────────────────────
+   HELPERS
+   ───────────────────────────────────────────────────── */
+
+function pct(v, dp)  { return (v * 100).toFixed(dp); }
+function pctN(v)     { return +(v * 100).toFixed(2); }
+
+function fmtM(n) {
+  var a = Math.abs(n);
+  if (a >= 1e9)  return (n / 1e9).toFixed(1) + 'B';
+  if (a >= 1e6)  return (n / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3)  return (n / 1e3).toFixed(0) + 'K';
+  return Math.round(n).toLocaleString();
+}
+
+function kpi(label, val, cls) {
+  return '<div class="kpi-card"><div class="kc-label">' + label + '</div><div class="kc-val ' + cls + '">' + val + '</div></div>';
+}
+
+function momentum(m) {
+  if (!m) return '—';
+  var icons = { Accelerating: '▲', Positive: '►', Stable: '═', Flat: '═', Decelerating: '▼' };
+  return (icons[m] || '') + ' ' + m;
+}
+
+function toSorted(obj, dir) {
+  var arr = Object.keys(obj).map(function(k){ return { name: k, bps: obj[k] }; });
+  return arr.sort(function(a, b) { return dir === 'asc' ? a.bps - b.bps : b.bps - a.bps; });
+}
+
+function dealTable(deals, rowClass, isTop) {
+  var h = '<table class="mc-table"><thead><tr>' +
+    '<th>#</th><th>' + B.l2Label + '</th><th>' + B.l1Label + '</th><th>Net IRR</th><th>MOIC</th>' +
+    '<th>DPI</th><th>Hold (mo)</th><th>Invested</th><th>NAV</th></tr></thead><tbody>';
+  deals.forEach(function(d, i) {
+    var rank = isTop ? (i + 1) : (B.dealPerformance.length - i);
+    var ic   = d.irr > 0.15 ? 'strong' : d.irr > 0.08 ? 'moderate' : d.irr > 0 ? 'below' : 'negative';
+    h += '<tr class="' + rowClass + '"><td>' + rank + '</td><td class="entity-name">' + d.deal + '</td><td>' + d.fund + '</td>' +
+      '<td class="irr-cell ' + ic + '">' + pct(d.irr, 2) + '%</td><td>' + d.moic.toFixed(2) + 'x</td>' +
+      '<td>' + d.dpi.toFixed(2) + 'x</td><td>' + d.holdMonths + '</td>' +
+      '<td>$' + fmtM(d.invested) + '</td><td>$' + fmtM(d.nav) + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+
+/* ─────────────────────────────────────────────────────
+   PDF EXPORT
+   ───────────────────────────────────────────────────── */
+function exportPDF() {
+  var btn = document.getElementById('btnPDF');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  // Excel Add-in: use browser print dialog instead of Apps Script PDF generation
+  setTimeout(function() {
+    window.print();
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }, 200);
+}
+</script>
+</body>
+</html>

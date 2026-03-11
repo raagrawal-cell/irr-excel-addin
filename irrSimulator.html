@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   SIMENGINE — PORTFOLIO SIMULATION PLATFORM
+   Replaces old chat-based IRR Simulator
+   Google Sheets integrated via BUNDLE + google.script.run
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:#060A13;--surface:#0D1320;--card:#131B2E;--elevated:#1A2540;
+  --border:#1E2D4A;--borderLight:#2A3D60;
+  --text:#E2E8F0;--textMuted:#94A3B8;--textDim:#64748B;
+  --accent:#3B82F6;--accentSoft:#2563EB;
+  --teal:#14B8A6;--tealSoft:#0F766E;
+  --orange:#F59E0B;--red:#EF4444;--green:#22C55E;
+  --purple:#A78BFA;--purpleSoft:#7C3AED;
+  --white:#FFFFFF;
+  --font:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'JetBrains Mono','SF Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+button{font-family:var(--font);cursor:pointer;}input,textarea{font-family:var(--font);}
+
+/* ═══ LAYOUT ═══ */
+.app{display:flex;height:100vh;}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.sidebar-logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--teal));display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--white);font-weight:700;}
+.nav-section{padding:12px 10px 6px;flex:1;overflow-y:auto;}
+.nav-btn{width:100%;display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;border:none;background:transparent;text-align:left;margin-bottom:2px;transition:background .15s;}
+.nav-btn:hover{background:rgba(59,130,246,.06);}
+.nav-btn.active{background:rgba(59,130,246,.08);}
+.nav-btn-icon{font-size:15px;color:var(--textDim);}
+.nav-btn.active .nav-btn-icon{color:var(--accent);}
+.nav-btn-label{font-size:12px;font-weight:500;color:var(--textMuted);}
+.nav-btn.active .nav-btn-label{color:var(--white);}
+.nav-badge{margin-left:auto;font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(59,130,246,.15);color:var(--accent);font-weight:600;}
+.sidebar-footer{padding:14px;border-top:1px solid var(--border);}
+.sidebar-fund{font-size:11px;font-weight:600;color:var(--white);margin-bottom:2px;}
+.sidebar-meta{font-size:9px;color:var(--textDim);line-height:1.4;}
+.main{flex:1;overflow:auto;padding:28px 32px;}
+
+/* ═══ COMPONENTS ═══ */
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:9.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;}
+.btn{padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
+.btn-sm{padding:6px 12px;font-size:11px;}
+.btn-default{background:var(--card);border:1px solid var(--border);color:var(--textMuted);}
+.btn-default:hover{border-color:var(--borderLight);color:var(--text);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--textMuted);}
+.btn-primary{border:none;color:var(--white);}
+.card{background:var(--card);border-radius:12px;border:1px solid var(--border);}
+.toggle{width:36px;height:20px;border-radius:10px;padding:2px;cursor:pointer;transition:background .2s;display:inline-block;}
+.toggle-knob{width:16px;height:16px;border-radius:50%;background:var(--white);transition:transform .2s;display:block;}
+table{width:100%;border-collapse:collapse;}
+th{padding:9px 14px;text-align:left;font-size:9.5px;font-weight:600;color:var(--textDim);text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+td{padding:10px 14px;}
+thead tr{border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid rgba(30,45,74,.25);transition:background .1s;}
+tbody tr:hover{background:rgba(59,130,246,.03);}
+tbody tr.sel{background:rgba(59,130,246,.06);}
+.mono{font-family:var(--mono);}
+.fw600{font-weight:600;}.fw700{font-weight:700;}
+.fs10{font-size:10px;}.fs11{font-size:11px;}.fs12{font-size:12px;}.fs13{font-size:13px;}
+.metric{flex:1;min-width:130px;}
+.metric-label{font-size:9.5px;color:var(--textDim);letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px;}
+.metric-value{font-size:24px;font-weight:700;}
+.metric-sub{font-size:10px;color:var(--textDim);margin-top:2px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.fade-in{animation:fadeIn .3s ease-out;}
+.cf-summary-strip{padding:12px 20px;background:rgba(59,130,246,.03);border-bottom:1px solid var(--border);display:flex;gap:24px;align-items:center;flex-wrap:wrap;}
+.cf-filters{padding:10px 20px;border-bottom:1px solid var(--border);display:flex;gap:6px;}
+.cf-filter-btn{padding:4px 12px;border-radius:6px;font-size:10.5px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--textDim);transition:all .15s;cursor:pointer;}
+.cf-filter-btn.active{border-color:var(--accent);background:rgba(59,130,246,.1);color:var(--accent);}
+.status-icon{width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;}
+.scenario-card{padding:14px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;}
+.scenario-card:hover{border-color:var(--borderLight);background:var(--elevated);}
+.scenario-card.selected{border-color:var(--accent);background:rgba(59,130,246,.06);}
+.nlp-box{width:100%;min-height:60px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;resize:vertical;outline:none;font-family:var(--font);line-height:1.5;}
+.nlp-box:focus{border-color:var(--accent);}
+.nlp-box::placeholder{color:var(--textDim);}
+.chart-container{position:relative;}
+canvas{display:block;}
+.sens-cell{padding:6px 10px;text-align:center;font-size:11px;font-family:var(--mono);border:1px solid var(--border);}
+.compare-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--white);transition:all .15s;flex-shrink:0;}
+.compare-check.checked{background:var(--accent);border-color:var(--accent);}
+
+/* ═══ SCENARIO GRID — Compact Layout ═══ */
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;}
+.scenario-card-mini{padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;position:relative;}
+.scenario-card-mini:hover{border-color:var(--borderLight);background:var(--elevated);}
+.scenario-card-mini.selected{border-color:var(--accent);background:rgba(59,130,246,.06);box-shadow:0 0 0 1px rgba(59,130,246,.2);}
+.sticky-header{position:sticky;top:-28px;z-index:10;background:var(--bg);padding:16px 0 12px;margin:-28px -32px 0;padding:16px 32px 12px;border-bottom:1px solid var(--border);}
+
+/* ═══ SLIDER CONTROLS ═══ */
+.param-slider-wrap{margin-bottom:16px;}
+.param-row{display:flex;align-items:center;gap:16px;padding:12px 16px;border-radius:10px;background:var(--surface);border:1px solid var(--border);margin-bottom:8px;}
+.param-label-col{width:180px;flex-shrink:0;}
+.param-label{font-size:11px;font-weight:600;color:var(--text);}
+.param-sublabel{font-size:9px;color:var(--textDim);margin-top:1px;}
+.param-slider-col{flex:1;display:flex;align-items:center;gap:12px;}
+.param-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:var(--border);outline:none;cursor:pointer;}
+.param-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:2px solid var(--white);box-shadow:0 2px 8px rgba(59,130,246,.4);cursor:pointer;transition:transform .1s;}
+.param-slider::-webkit-slider-thumb:hover{transform:scale(1.15);}
+.param-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);border:2px solid var(--white);cursor:pointer;}
+.param-value-box{min-width:80px;padding:6px 10px;border-radius:6px;background:var(--card);border:1px solid var(--border);text-align:center;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--orange);}
+.param-base-val{font-family:var(--mono);font-size:11px;color:var(--textDim);min-width:60px;text-align:center;}
+
+/* ═══ LIVE PREVIEW GAUGES ═══ */
+.preview-strip{display:flex;gap:12px;margin-bottom:16px;}
+.preview-gauge{flex:1;padding:14px;border-radius:10px;background:var(--card);border:1px solid var(--border);text-align:center;transition:border-color .2s;}
+.preview-gauge.impacted{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03);}
+.preview-gauge .gauge-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--textDim);margin-bottom:6px;}
+.preview-gauge .gauge-base{font-size:12px;color:var(--textMuted);margin-bottom:2px;}
+.preview-gauge .gauge-stressed{font-size:22px;font-weight:700;transition:color .2s;}
+.preview-gauge .gauge-delta{font-size:10px;font-weight:600;margin-top:3px;}
+.preview-bar{height:4px;border-radius:2px;background:var(--border);margin-top:8px;overflow:hidden;}
+.preview-bar-fill{height:100%;border-radius:2px;transition:width .3s ease;}
+.config-missing{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:40px;text-align:center;}
+.config-missing h2{color:var(--red);font-size:18px;}
+.config-missing p{color:var(--textMuted);max-width:500px;line-height:1.6;}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script type="module" src="../engine/bridge.js"></script>
+</head>
+<body>
+<!-- ═══ BUNDLE + SIM_CONFIG: populated async by engine/bridge.js ═══ -->
+<script>
+var BUNDLE     = null;   // set by IVP_INIT() below
+var SIM_CONFIG = { apiKey: '', apiModel: 'claude-sonnet-4-20250514', maxTokens: 1000 };
+</script>
+
+<div id="app"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   SIMENGINE STATE
+   ═══════════════════════════════════════════════════════════════════════ */
+var page='hub', mode='', step='library', simRan=false, simSaved=false, simName='';
+var selectedScenario=null, customNLP='', nlpParsed=false, nlpParams=null;
+var valEnabled=true, perfEnabled=true, exitDelay=2;
+var expandedDeals={}, showAllDeltas=false, cfFilter='all';
+var compareSelected={};
+var simCounter=0;
+var isLoading=false, statusText='';
+
+// AI spend tracking
+var aiSpend = {input_tokens:0, output_tokens:0, cost:0, used:false};
+
+// Parameter configuration state (populated when user selects a scenario)
+var configParams = {}; // {key: currentValue} — slider-driven
+
+// Saved simulations (persisted in session)
+var savedSims=[];
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SLIDER DEFINITIONS — maps each scenario to adjustable parameters
+   Each param: {key, label, sublabel, unit, min, max, step, defaultVal, baseVal (from current portfolio)}
+   ═══════════════════════════════════════════════════════════════════════ */
+var sliderDefs = {
+  'V1': [{key:'nav_haircut_pct',label:'Discount Rate Change',sublabel:'Impact on NAV via DCF revaluation',unit:'bps',min:0,max:500,step:25,defaultVal:200,displayMult:1,format:function(v){return '+'+v+' bps';}}],
+  'V2': [{key:'nav_haircut_pct',label:'Spread Widening',sublabel:'Credit spread increase over base',unit:'bps',min:0,max:800,step:50,defaultVal:300,displayMult:1,format:function(v){return '+'+v+' bps';}},
+         {key:'hold_period_delta',label:'Hold Period Extension',sublabel:'Additional years to exit',unit:'yrs',min:0,max:3,step:0.5,defaultVal:0,displayMult:1,format:function(v){return v>0?'+'+v+' yrs':'No change';}}],
+  'V3': [{key:'exit_multiple',label:'Multiple Compression',sublabel:'Reduction in EV/EBITDA applied',unit:'x',min:0,max:5,step:0.25,defaultVal:2.0,displayMult:1,format:function(v){return '-'+v.toFixed(1)+'x';}}],
+  'V4': [{key:'revenue_drop',label:'Revenue Decline',sublabel:'Percentage drop in top-line revenue',unit:'%',min:0,max:50,step:5,defaultVal:15,displayMult:1,format:function(v){return '-'+v+'%';}},
+         {key:'ebitda_drop',label:'EBITDA Margin Compression',sublabel:'Percentage drop in EBITDA',unit:'%',min:0,max:60,step:5,defaultVal:20,displayMult:1,format:function(v){return '-'+v+'%';}}],
+  'V5': [{key:'nav_haircut_pct',label:'Portfolio NAV Drawdown',sublabel:'GFC-calibrated: multiples -3-4x, spreads +600bps',unit:'%',min:10,max:60,step:5,defaultVal:35,displayMult:1,format:function(v){return '-'+v+'%';}},
+         {key:'hold_period_delta',label:'Exit Freeze Duration',sublabel:'Market shutdown period — exits delayed',unit:'yrs',min:0,max:4,step:0.5,defaultVal:1,displayMult:1,format:function(v){return '+'+v+' yrs';}}],
+  'V6': [{key:'nav_haircut_pct',label:'Portfolio NAV Impact',sublabel:'COVID-calibrated: sector-specific drawdown',unit:'%',min:5,max:50,step:5,defaultVal:22,displayMult:1,format:function(v){return '-'+v+'%';}}],
+  'V7': [{key:'nav_haircut_pct',label:'Recovery Rate',sublabel:'Liquidation value as % of current NAV (lower = more severe)',unit:'%',min:10,max:80,step:5,defaultVal:50,displayMult:1,format:function(v){return v+'% recovery ('+((100-v))+'% loss)';}}],
+  'V8': [{key:'nav_haircut_pct',label:'FX Depreciation',sublabel:'Local currency decline vs fund currency',unit:'%',min:5,max:40,step:5,defaultVal:15,displayMult:1,format:function(v){return '-'+v+'%';}}],
+  'V9': [{key:'exit_multiple',label:'Sector Multiple Compression',sublabel:'Targeted de-rating of selected sector',unit:'%',min:5,max:50,step:5,defaultVal:30,displayMult:1,format:function(v){return '-'+v+'%';}}],
+  'V10':[{key:'nav_haircut_pct',label:'NAV Override',sublabel:'Manual adjustment to current NAV',unit:'%',min:-30,max:30,step:5,defaultVal:10,displayMult:1,format:function(v){return (v>=0?'+':'')+v+'%';}}],
+  'P1': [{key:'hold_period_delta_years',label:'Exit Delay',sublabel:'Push all terminal cashflows forward',unit:'yrs',min:0.5,max:5,step:0.5,defaultVal:2,displayMult:1,format:function(v){return '+'+v+' years';}},
+         {key:'nav_growth_rate',label:'NAV Growth During Hold',sublabel:'Annual appreciation/depreciation during delay',unit:'%',min:-10,max:10,step:1,defaultVal:0,displayMult:1,format:function(v){return (v>=0?'+':'')+v+'% p.a.';}}],
+  'P2': [{key:'hold_period_delta_years',label:'Early Exit (years earlier)',sublabel:'Accelerate exit timing',unit:'yrs',min:0.5,max:3,step:0.5,defaultVal:1,displayMult:1,format:function(v){return '-'+v+' years';}},
+         {key:'nav_growth_rate',label:'Exit Discount',sublabel:'NAV haircut for accelerated liquidity',unit:'%',min:0,max:30,step:5,defaultVal:10,displayMult:1,format:function(v){return '-'+v+'%';}}],
+  'P3': [{key:'missed_quarters',label:'Missed Payment Quarters',sublabel:'Number of quarterly payments zeroed',unit:'qtrs',min:1,max:8,step:1,defaultVal:4,displayMult:1,format:function(v){return v+' quarters';}}],
+  'P4': [{key:'pik_pct',label:'PIK Conversion Rate',sublabel:'% of cash interest converted to PIK',unit:'%',min:10,max:100,step:10,defaultVal:50,displayMult:1,format:function(v){return v+'%';}}],
+  'P5': [{key:'hold_period_delta_years',label:'Deployment Pace Shift',sublabel:'Speed up (-) or slow down (+) capital calls',unit:'yrs',min:-2,max:3,step:0.5,defaultVal:1,displayMult:1,format:function(v){return (v>=0?'+':'')+v+' years';}}],
+  'P6': [{key:'exclude_deal',label:'Deal to Exclude',sublabel:'Select deal to remove from portfolio',unit:'deal',min:0,max:10,step:1,defaultVal:0,displayMult:1,format:function(v){var d=getDeals();return d[v]?d[v].name:'Select deal';},isDealSelector:true}],
+  'P7': [{key:'benchmark',label:'Benchmark Index',sublabel:'Public market comparison index',unit:'idx',min:0,max:2,step:1,defaultVal:0,displayMult:1,format:function(v){return ['S&P 500','Russell 2000','MSCI ACWI'][v]||'S&P 500';},isSelector:true,options:['S&P 500','Russell 2000','MSCI ACWI']}],
+  'P8': [{key:'nav_haircut_pct',label:'Vintage Stress Severity',sublabel:'NAV haircut applied to stressed vintages',unit:'%',min:5,max:40,step:5,defaultVal:15,displayMult:1,format:function(v){return '-'+v+'%';}}],
+  'P9': [{key:'exit_multiple',label:'Recovery Upside',sublabel:'NAV appreciation for underperforming deals',unit:'%',min:5,max:50,step:5,defaultVal:25,displayMult:1,format:function(v){return '+'+v+'%';}}],
+  'P10':[{key:'nav_haircut_pct',label:'Custom NAV Stress',sublabel:'Adjust portfolio NAV up or down',unit:'%',min:-30,max:40,step:5,defaultVal:10,displayMult:1,format:function(v){return (v>=0?'+':'')+v+'%';}}],
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCENARIO DEFINITIONS — 20 Pre-Built (V1-V10 Deal, P1-P10 Portfolio)
+   ═══════════════════════════════════════════════════════════════════════ */
+var scenarios={
+  deal:[
+    {id:'V1',name:'Interest Rate Shock',cat:'Rate & Discount Rate',desc:'Adjust discount rates by ±50-200 bps. Tests sensitivity of DCF valuations to rate changes.',params:'Discount rate: +200bps',icon:'📈',color:'var(--accent)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.14,hold_period_delta:0}}},
+    {id:'V2',name:'Credit Spread Widening',cat:'Rate & Discount Rate',desc:'Widen credit spread component independently of base rates. Flight-to-quality simulation.',params:'Spread: +300bps',icon:'📊',color:'var(--orange)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.18,hold_period_delta:0}}},
+    {id:'V3',name:'Multiple Compression',cat:'Market Multiples',desc:'Compress EV/EBITDA or EV/Revenue multiples used in market approach valuations.',params:'Multiple: -2.0x',icon:'📉',color:'var(--purple)',
+     simParams:{template:'SC-01',params:{exit_multiple:-0.3}}},
+    {id:'V4',name:'Revenue / EBITDA Stress',cat:'Fundamental',desc:'Deteriorate portfolio company financials. Revenue drops, margin compression.',params:'Revenue: -15%, EBITDA: -20%',icon:'🏢',color:'var(--red)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.20,hold_period_delta:0}}},
+    {id:'V5',name:'GFC-Style Crisis',cat:'Named Historical',desc:'Apply 2008-09 parameters: multiples -3-4x, spreads +600-800bps, defaults 10-12%.',params:'Pre-built GFC parameters',icon:'🌪️',color:'var(--red)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.35,hold_period_delta:1}}},
+    {id:'V6',name:'COVID-Style Event',cat:'Named Historical',desc:'Sharp but shorter drawdown with sector-specific impact. Tech resilient, travel crushed.',params:'Pre-built COVID parameters',icon:'🦠',color:'var(--orange)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.22,hold_period_delta:0}}},
+    {id:'V7',name:'Default / Impairment',cat:'Credit-Specific',desc:'Switch specific deals from going-concern to recovery/liquidation valuation.',params:'Recovery rate: 40-60%',icon:'⚠️',color:'var(--red)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.50,hold_period_delta:0}}},
+    {id:'V8',name:'FX / Currency Shock',cat:'Macro',desc:'Stress cross-border deal valuations with adverse exchange rate movements.',params:'FX depreciation: -15%',icon:'💱',color:'var(--teal)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.15,hold_period_delta:0}}},
+    {id:'V9',name:'Sector De-Rating',cat:'Sector-Specific',desc:'Target a specific sector for multiple compression while others remain stable.',params:'Sector multiple: -30%',icon:'🏭',color:'var(--purple)',
+     simParams:{template:'SC-01',params:{exit_multiple:-0.3}}},
+    {id:'V10',name:'Custom Valuation Override',cat:'Ad-hoc',desc:'Manually input alternative NAV assumptions for specific deals.',params:'User-defined',icon:'✏️',color:'var(--textMuted)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.10}}},
+  ],
+  portfolio:[
+    {id:'P1',name:'Exit Timing Delay',cat:'Timing & Liquidity',desc:'Push terminal cashflow out by 1-3 years. IRR is extremely sensitive to hold period.',params:'Delay: +2 years',icon:'⏳',color:'var(--orange)',
+     simParams:{template:'SC-02',params:{hold_period_delta_years:2,nav_growth_rate:0}}},
+    {id:'P2',name:'Accelerated Exit',cat:'Timing & Liquidity',desc:'Exit earlier at slight discount. Tests IRR vs MOIC trade-off.',params:'Exit: -1yr, NAV: -10%',icon:'🚀',color:'var(--green)',
+     simParams:{template:'SC-02',params:{hold_period_delta_years:-1,nav_growth_rate:-0.10}}},
+    {id:'P3',name:'Missed Payments',cat:'Cashflow Pattern',desc:'Zero out periodic income for N quarters. Tests payment disruption impact.',params:'Skip: 4 quarters',icon:'🚫',color:'var(--red)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.05,hold_period_delta:0}}},
+    {id:'P4',name:'PIK Toggle',cat:'Cashflow Pattern',desc:'Convert cash interest to paid-in-kind. Higher MOIC but lower IRR from delayed cash.',params:'PIK: 50% of coupons',icon:'🔄',color:'var(--orange)',
+     simParams:{template:'SC-02',params:{hold_period_delta_years:0,nav_growth_rate:0.08}}},
+    {id:'P5',name:'J-Curve / Deployment Pacing',cat:'Fund-Level',desc:'Test how different capital call pacing affects fund-level returns.',params:'Pacing: accelerated/delayed',icon:'📐',color:'var(--purple)',
+     simParams:{template:'SC-02',params:{hold_period_delta_years:1,nav_growth_rate:0.02}}},
+    {id:'P6',name:'Deal Exclusion / Concentration',cat:'Portfolio Construction',desc:'Remove specific deals and recalculate. "What if we never did this deal?"',params:'Exclude: select deals',icon:'✂️',color:'var(--teal)',
+     simParams:{template:'SC-07',params:{action:'exclude'}}},
+    {id:'P7',name:'PME / Public Market Benchmark',cat:'Benchmarking',desc:'Run cashflows against S&P 500, Russell 2000 to compute KS-PME and Direct Alpha.',params:'Benchmark: S&P 500',icon:'📊',color:'var(--accent)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0}}},
+    {id:'P8',name:'Vintage Cohort Stress',cat:'Analytical',desc:'Group deals by entry year and stress-test each vintage independently.',params:'Group by: vintage year',icon:'📅',color:'var(--purple)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.15}}},
+    {id:'P9',name:'Recovery Scenario',cat:'Upside',desc:'What if underperforming deals recover to original underwriting? Tests upside potential.',params:'NAV recovery: +20-30%',icon:'📈',color:'var(--green)',
+     simParams:{template:'SC-01',params:{exit_multiple:0.25}}},
+    {id:'P10',name:'Custom Return Simulation',cat:'Ad-hoc',desc:'Define your own return stress parameters or describe a scenario in plain English.',params:'User-defined',icon:'✏️',color:'var(--textMuted)',
+     simParams:{template:'SC-03',params:{nav_haircut_pct:0.10}}},
+  ]
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INIT — Bootstrap from BUNDLE
+   ═══════════════════════════════════════════════════════════════════════ */
+var baseCase = null;
+
+// ── Excel Add-in async init — replaces <?!= bundle ?> injection ─────────────
+(async function init() {
+  // Wait for bridge.js ES-module (max 5 s)
+  for (var _w = 0; _w < 100 && typeof window.IVP_INIT !== 'function'; _w++) {
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+  if (typeof window.IVP_INIT !== 'function') {
+    document.getElementById('app').innerHTML =
+      '<div class="config-missing"><h2>⚠ Engine Error</h2><p>IVP Engine not loaded. Check engine/bridge.js path.</p></div>';
+    return;
+  }
+
+  await window.IVP_INIT();
+  BUNDLE     = window.IVP_BUNDLE;
+  SIM_CONFIG = window.IVP_SIM_CONFIG || SIM_CONFIG;
+
+  if (!BUNDLE || BUNDLE.error) {
+    var errMsg = (BUNDLE && BUNDLE.error) ? BUNDLE.error : 'Failed to load portfolio data. Check Config Library.';
+    document.getElementById('app').innerHTML =
+      '<div class="config-missing"><h2>⚠ Configuration Error</h2>' +
+      '<p>' + esc(errMsg) + '</p>' +
+      '<p style="margin-top:16px;font-size:12px;color:var(--textMuted)">Open Config Library, save a config, and reload.</p></div>';
+    return;
+  }
+
+  baseCase = { fund: BUNDLE.fund, deals: BUNDLE.deals };
+  render();
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FORMATTERS
+   ═══════════════════════════════════════════════════════════════════════ */
+function pct(v,dp){return v!=null?(v*100).toFixed(dp!=null?dp:1)+'%':'N/A';}
+function mox(v){return v!=null?v.toFixed(2)+'x':'N/A';}
+function fmtM(n){if(n==null)return'N/A';var a=Math.abs(n);if(a>=1e9)return'$'+(n/1e9).toFixed(1)+'B';if(a>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(a>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+Math.round(n);}
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function pill(t,c){return'<span class="pill" style="color:'+c+';background:'+c+'15;border:1px solid '+c+'25;">'+t+'</span>';}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DERIVE DEAL DATA FROM BUNDLE — adapts BUNDLE.deals to SimEngine format
+   ═══════════════════════════════════════════════════════════════════════ */
+function getDeals(){
+  if(!baseCase)return[];
+  return baseCase.deals.map(function(d){
+    var nav = d.nav || 0;
+    var invested = d.invested || nav * 0.7;
+    return {
+      name: d.name,
+      pathKey: d.pathKey,
+      sector: d.sector || (d.pathKey ? d.pathKey.split(BUNDLE.pathSep || ' > ')[0] : ''),
+      dtype: d.dealType || d.type || 'Equity',
+      curNav: nav,
+      strNav: nav, // updated when sim runs
+      baseIRR: d.irr || 0,
+      baseMOIC: d.moic || 1.0,
+      invested: invested,
+      level: d.level || 1,
+      type: (d.dealType||'').toLowerCase().indexOf('credit')>=0 || (d.dealType||'').toLowerCase().indexOf('lien')>=0 ? 'credit' : 'equity'
+    };
+  });
+}
+
+function getFundMetrics(){
+  if(!baseCase) return {irr:0,moic:1,dpi:0,rvpi:0,nav:0};
+  var f = baseCase.fund;
+  return {irr:f.irr||0, moic:f.moic||1, dpi:f.dpi||0, rvpi:f.rvpi||0, nav:f.nav||f.totalNAV||0};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIMULATION STATE — holds current sim result
+   ═══════════════════════════════════════════════════════════════════════ */
+var simResult = null; // holds { fund:{}, deals:[], mutations:[] } from server
+
+function getSimDeals(){
+  var deals = getDeals();
+  if(!simResult) return deals;
+  // Map simResult deals back
+  return deals.map(function(d){
+    var sd = simResult.deals ? simResult.deals.find(function(x){return x.pathKey===d.pathKey;}) : null;
+    if(sd){
+      d.strNav = sd.nav || d.curNav;
+      d.simIRR = sd.irr;
+      d.simMOIC = sd.moic;
+    } else {
+      d.strNav = d.curNav;
+      d.simIRR = d.baseIRR;
+      d.simMOIC = d.baseMOIC;
+    }
+    return d;
+  });
+}
+
+function getSimFund(){
+  if(!simResult) return getFundMetrics();
+  return {
+    irr: simResult.fund.irr || getFundMetrics().irr,
+    moic: simResult.fund.moic || getFundMetrics().moic,
+    dpi: simResult.fund.dpi || getFundMetrics().dpi,
+    rvpi: simResult.fund.rvpi || getFundMetrics().rvpi,
+    nav: simResult.fund.nav || simResult.fund.totalNAV || getFundMetrics().nav
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   AI CONTROLLER — NLP → Structured Parameters via Claude
+   ═══════════════════════════════════════════════════════════════════════ */
+function buildSystemPrompt(){
+  var deals = BUNDLE.deals;
+  var ctx = 'CURRENT PORTFOLIO — ' + BUNDLE.lastQuarter + ':\n';
+  deals.forEach(function(d){
+    ctx += '- ' + d.name + ' (pathKey: "' + d.pathKey + '"): IRR ' + pct(d.irr) + ', MOIC ' + mox(d.moic) + ', NAV ' + fmtM(d.nav) + '\n';
+  });
+  ctx += '- Fund-level: IRR ' + pct(BUNDLE.fund.irr) + ', MOIC ' + mox(BUNDLE.fund.moic);
+  var hierarchy = 'Hierarchy: ' + (BUNDLE.hierarchy || []).map(function(h){ return (typeof h === 'string') ? h : h.label; }).join(' > ');
+  var entityIds = 'Entity pathKeys: ' + deals.map(function(d){return '"'+d.pathKey+'"';}).join(', ');
+
+  return 'You are the AI Controller for IVP SimEngine Portfolio Simulation Platform. You translate natural language "what-if" questions into structured simulation parameters.\n\n' +
+    'RULES:\n1. You NEVER calculate IRR yourself. Extract parameters for the calculation engine.\n2. ALWAYS state assumptions explicitly.\n3. When ambiguous, ask ONE clarifying question.\n4. Return ONLY valid JSON.\n\n' +
+    hierarchy + '\n' + entityIds + '\n\n' + ctx + '\n\n' +
+    'AVAILABLE TEMPLATES:\n' +
+    'SC-01: Exit Multiple Sensitivity — target_entities:[], params: {exit_multiple: number}\n' +
+    'SC-02: Hold Period Extension — target_entities:[], params: {hold_period_delta_years: number, nav_growth_rate: number}\n' +
+    'SC-03: Macro Stress Test — target_entities:[], params: {nav_haircut_pct: number, hold_period_delta: number}\n' +
+    'SC-05: Follow-on Investment — target_entities:[], params: {amount: number, date: "YYYY-MM-DD", nav_multiple: number}\n' +
+    'SC-06: Partial Realization — target_entities:[], params: {realization_pct: number, date: "YYYY-MM-DD"}\n' +
+    'SC-07: Portfolio Composition — target_entities:[], params: {action: "write_off"|"exclude"}\n' +
+    'SC-10: Target IRR Backsolve — target_entities:[], params: {target_irr: number}\n\n' +
+    'RESPONSE FORMAT — return ONLY this JSON:\n' +
+    '{"thinking":"...","scenarios":[{"template":"SC-XX","target_entities":["pathKey"],"params":{...}}],"assumptions":["..."],"needs_clarification":false,"clarification_question":null}';
+}
+
+function callAI(query, callback){
+  var apiKey = SIM_CONFIG.apiKey;
+  if(!apiKey){callback(null,'No API key configured. Add your Anthropic API key to the Sim_Config sheet.');return;}
+
+  var systemPrompt = buildSystemPrompt();
+  var model = SIM_CONFIG.apiModel || 'claude-sonnet-4-20250514';
+
+  // Primary path: route through server-side Apps Script (avoids CORS in Google Sheets iframe)
+  if(typeof google !== 'undefined' && google.script && google.script.run){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        try{
+          if(!resp || resp.error){
+            callback(null, 'Server AI error: ' + (resp ? resp.error : 'Unknown'));
+            return;
+          }
+          // Track AI spend
+          if(resp.usage){
+            var inp = resp.usage.input_tokens || 0;
+            var out = resp.usage.output_tokens || 0;
+            var cost = (inp * 3 / 1e6) + (out * 15 / 1e6);
+            aiSpend = {input_tokens: inp, output_tokens: out, cost: cost, used: true};
+          }
+          var text = resp.text || '';
+          var clean = text.replace(/```json\n?|```\n?/g,'').trim();
+          callback(JSON.parse(clean), null);
+        }catch(e){callback(null,'AI parse error: '+e.message);}
+      })
+      .withFailureHandler(function(err){
+        callback(null, 'Server AI call failed: ' + err.message);
+      })
+      .callClaudeAPI({
+        apiKey: apiKey,
+        model: model,
+        maxTokens: 1000,
+        system: systemPrompt,
+        userMessage: query
+      });
+    return;
+  }
+
+  // Fallback: direct XHR (works in standalone / testing contexts)
+  var payload = {
+    model: model,
+    max_tokens: 1000,
+    system: systemPrompt,
+    messages: [{role:'user',content:query}]
+  };
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST','https://api.anthropic.com/v1/messages',true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.setRequestHeader('x-api-key',apiKey);
+  xhr.setRequestHeader('anthropic-version','2023-06-01');
+  xhr.setRequestHeader('anthropic-dangerous-direct-browser-access','true');
+  xhr.onload=function(){
+    try{
+      var data=JSON.parse(xhr.responseText);
+      // Track AI spend from usage object
+      if(data.usage){
+        var inp = data.usage.input_tokens || 0;
+        var out = data.usage.output_tokens || 0;
+        var cost = (inp * 3 / 1e6) + (out * 15 / 1e6);
+        aiSpend = {input_tokens: inp, output_tokens: out, cost: cost, used: true};
+      }
+      var text=(data.content||[]).map(function(b){return b.text||'';}).join('');
+      var clean=text.replace(/```json\n?|```\n?/g,'').trim();
+      callback(JSON.parse(clean),null);
+    }catch(e){callback(null,'AI parse error: '+e.message);}
+  };
+  xhr.onerror=function(){callback(null,'API request failed. Check console for CORS errors.');};
+  xhr.send(JSON.stringify(payload));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIMULATION EXECUTOR — calls google.script.run.runSimulation()
+   ═══════════════════════════════════════════════════════════════════════ */
+function executeSimulation(scenarioConfigs, onComplete){
+  isLoading=true;
+  statusText='Computing XIRR deterministically…';
+  render();
+
+  // Build scenario array for the server-side engine
+  var allEntities = BUNDLE.deals.map(function(d){return d.pathKey;});
+  var serverScenarios = scenarioConfigs.map(function(sc){
+    return {
+      template: sc.template,
+      target_entities: sc.target_entities || allEntities,
+      params: sc.params
+    };
+  });
+
+  google.script.run
+    .withSuccessHandler(function(result){
+      isLoading=false;
+      if(!result || !result.ok){
+        statusText = 'Simulation error: ' + (result ? result.error : 'Unknown');
+        render();
+        if(onComplete) onComplete(null);
+        return;
+      }
+      simResult = result;
+      if(onComplete) onComplete(result);
+      render();
+    })
+    .withFailureHandler(function(err){
+      isLoading=false;
+      statusText = 'Server error: ' + err.message;
+      render();
+      if(onComplete) onComplete(null);
+    })
+    .runSimulation({scenarios: serverScenarios});
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════ */
+function showPage(p){
+  page=p;
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+  var el=document.getElementById('nav-'+p);if(el)el.classList.add('active');
+  if(p==='hub'){mode='';step='library';simRan=false;selectedScenario=null;customNLP='';nlpParsed=false;simResult=null;}
+  render();
+}
+
+function startMode(m){
+  mode=m;step='library';simRan=false;simSaved=false;selectedScenario=null;customNLP='';nlpParsed=false;simResult=null;
+  valEnabled=m==='deal'||m==='combined';
+  perfEnabled=m==='portfolio'||m==='combined';
+  expandedDeals={};showAllDeltas=false;cfFilter='all';
+  simName=m==='deal'?'New Deal Simulation':m==='portfolio'?'New Portfolio Simulation':'New Combined Simulation';
+  page='scenario';
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+  var el=document.getElementById('nav-scenario');if(el)el.classList.add('active');
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RENDER ROUTER
+   ═══════════════════════════════════════════════════════════════════════ */
+function render(){
+  if(!baseCase){return;}
+  var el=document.getElementById('app');
+  el.innerHTML = renderApp();
+  bindCharts();
+}
+
+function renderApp(){
+  // Sidebar
+  var sb = '<div class="app"><div class="sidebar">';
+  sb += '<div class="sidebar-logo"><div class="sidebar-logo-icon">S</div><div><div style="font-size:13px;font-weight:700;color:var(--white);">SimEngine</div><div style="font-size:9px;color:var(--textDim);">Portfolio Simulator</div></div></div>';
+  sb += '<div class="nav-section">';
+  sb += navBtn('hub','⬡','Simulation Hub');
+  sb += navBtn('scenario','◧','Active Scenario');
+  sb += navBtn('saved','◫','Saved Simulations',savedSims.length);
+  sb += navBtn('compare','⇅','Compare Scenarios');
+  sb += '</div>';
+  // Footer with fund info
+  sb += '<div class="sidebar-footer">';
+  sb += '<div class="sidebar-fund">' + esc(BUNDLE.lastQuarter || 'Current Portfolio') + '</div>';
+  sb += '<div class="sidebar-meta">' + esc((BUNDLE.hierarchy||[]).join(' → ')) + '</div>';
+  sb += '<div class="sidebar-meta" style="margin-top:4px;">Fund IRR: <span style="color:var(--teal);font-weight:600;">' + pct(getFundMetrics().irr) + '</span> · MOIC: <span style="color:var(--teal);font-weight:600;">' + mox(getFundMetrics().moic) + '</span></div>';
+  sb += '</div></div>';
+
+  // Main content
+  var main = '<div class="main" id="main">';
+  if(page==='hub') main += renderHub();
+  else if(page==='scenario') main += renderScenario();
+  else if(page==='saved') main += renderSaved();
+  else if(page==='compare') main += renderCompare();
+  main += '</div></div>';
+
+  return sb + main;
+}
+
+function navBtn(key,icon,label,badge){
+  var active = page===key ? ' active' : '';
+  var h = '<button class="nav-btn'+active+'" id="nav-'+key+'" onclick="showPage(\''+key+'\')">';
+  h += '<span class="nav-btn-icon">'+icon+'</span><span class="nav-btn-label">'+label+'</span>';
+  if(badge) h += '<span class="nav-badge">'+badge+'</span>';
+  h += '</button>';
+  return h;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HUB PAGE — 3 Entry Points
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderHub(){
+  var fm = getFundMetrics();
+  var dealCount = getDeals().length;
+  var cards=[
+    {key:'deal',color:'var(--accent)',icon:'◈',title:'Deal-Level Simulation',desc:'Stress individual deal valuations using DCF, market comps, and fundamental analysis. See how NAVs change under different market conditions.',output:'Stressed NAVs per deal',count:'10 scenarios'},
+    {key:'portfolio',color:'var(--teal)',icon:'◉',title:'Portfolio-Level Simulation',desc:'Stress portfolio returns through timing delays, cashflow disruptions, benchmarks, and portfolio construction analysis.',output:'Stressed IRR, MOIC, DPI',count:'10 scenarios'},
+    {key:'combined',color:'var(--purple)',icon:'⬡',title:'Combined Stress Test',desc:'Chain deal-level valuation shocks with portfolio-level return stresses. Full attribution and cashflow transparency.',output:'Compound returns + attribution',count:'20 scenarios'},
+  ];
+  var cardHTML = cards.map(function(e){
+    return '<div class="card" style="flex:1;min-width:280px;padding:22px;position:relative;overflow:hidden;cursor:pointer;" '+
+      'onmouseenter="this.style.borderColor=\''+e.color.replace('var(--','').replace(')','')+'50\'" onmouseleave="this.style.borderColor=\'var(--border)\'" onclick="startMode(\''+e.key+'\')">' +
+      '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+e.color+','+e.color+'40);"></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+      '<span style="font-size:22px;color:'+e.color+';">'+e.icon+'</span>' +
+      '<div><div class="fw700" style="font-size:15px;color:var(--white);">'+e.title+'</div>' +
+      '<div style="display:flex;gap:5px;margin-top:3px;">'+pill(e.count,e.color)+'</div></div></div>' +
+      '<p style="font-size:12px;color:var(--textMuted);line-height:1.5;margin:0 0 14px;">'+e.desc+'</p>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--border);">' +
+      '<span style="font-size:10px;color:var(--textDim);">Output: <span style="color:'+e.color+';font-weight:600;">'+e.output+'</span></span>' +
+      '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--accent),var(--accentSoft));box-shadow:0 2px 12px rgba(59,130,246,.3);">Start →</button>' +
+      '</div></div>';
+  }).join('');
+
+  // Portfolio summary strip
+  var summaryHTML = '<div class="card" style="padding:16px 22px;margin-bottom:20px;">' +
+    '<div style="display:flex;gap:24px;flex-wrap:wrap;">' +
+    '<div class="metric"><div class="metric-label">Fund IRR</div><div class="metric-value" style="color:var(--teal);">'+pct(fm.irr)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">MOIC</div><div class="metric-value" style="color:var(--teal);">'+mox(fm.moic)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">DPI</div><div class="metric-value" style="color:var(--text);">'+mox(fm.dpi)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">RVPI</div><div class="metric-value" style="color:var(--text);">'+mox(fm.rvpi)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">Total NAV</div><div class="metric-value" style="color:var(--text);">'+fmtM(fm.nav)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">Deals</div><div class="metric-value" style="color:var(--text);">'+dealCount+'</div></div>' +
+    '</div></div>';
+
+  return '<div class="fade-in">' +
+    '<h1 style="font-size:24px;font-weight:700;color:var(--white);margin:0 0 6px;">Simulation Hub</h1>' +
+    '<p style="font-size:13px;color:var(--textDim);margin:0 0 20px;">'+esc(BUNDLE.lastQuarter||'Current Portfolio')+' — Choose your simulation level</p>' +
+    summaryHTML +
+    '<div style="display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap;">'+cardHTML+'</div>' +
+    '<div class="card" style="background:rgba(59,130,246,.04);border-color:rgba(59,130,246,.15);padding:14px 18px;display:flex;gap:14px;">' +
+    '<span style="font-size:18px;margin-top:2px;">💡</span>' +
+    '<div><div class="fw700 fs13" style="color:var(--white);margin-bottom:4px;">Dual-Simulation Architecture</div>' +
+    '<div class="fs12" style="color:var(--textMuted);line-height:1.6;">Deal-level stress runs through the Valuation engine (stressed NAVs). Portfolio-level stress runs through the Performance engine (timing, cashflow, benchmarks). Combined chains both for compound analysis. All using your live portfolio data — XIRR computed deterministically.</div></div></div>' +
+    '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCENARIO PAGE ROUTER
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderScenario(){
+  if(!mode) return '<div class="fade-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;"><p style="font-size:14px;color:var(--textDim);margin-bottom:16px;">No active scenario. Start from the Simulation Hub.</p><button class="btn btn-primary" style="background:linear-gradient(135deg,var(--accent),var(--accentSoft));" onclick="showPage(\'hub\')">Go to Hub</button></div>';
+  if(step==='library') return renderLibrary();
+  if(step==='configure') return renderConfigure();
+  if(step==='custom') return renderCustom();
+  if(step==='results') return renderResults();
+  return '';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCENARIO LIBRARY — Compact Grid, Sticky Header with Run Button
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderLibrary(){
+  var mc = mode==='deal'?'var(--accent)':mode==='portfolio'?'var(--teal)':'var(--purple)';
+  var modeLabel = mode==='deal'?'Deal-Level':mode==='portfolio'?'Portfolio-Level':'Combined';
+  var list = mode==='combined' ? scenarios.deal.concat(scenarios.portfolio) : scenarios[mode==='deal'?'deal':'portfolio'];
+
+  // Build compact scenario cards — flat grid, no category grouping headers
+  var cards = list.map(function(s){
+    var isSel = selectedScenario===s.id;
+    var selStyle = isSel ? 'border-color:'+mc+';background:'+mc+'08;box-shadow:0 0 0 1px '+mc+'30;' : '';
+    return '<div class="scenario-card-mini'+(isSel?' selected':'')+'" style="'+selStyle+'" onclick="selectedScenario=\''+s.id+'\';render();">' +
+      '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">' +
+      '<span style="font-size:14px;">'+s.icon+'</span>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div class="fw600" style="font-size:11.5px;color:'+(isSel?'var(--white)':'var(--textMuted)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(s.name)+'</div>' +
+      '</div>' +
+      '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+s.color+'15;color:'+s.color+';font-weight:700;letter-spacing:.3px;flex-shrink:0;">'+s.id+'</span>' +
+      '</div>' +
+      '<p style="font-size:10px;color:var(--textDim);line-height:1.35;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">'+esc(s.desc)+'</p>' +
+      '</div>';
+  }).join('');
+
+  // Find selected scenario details for the inline preview
+  var selDetails = '';
+  if(selectedScenario){
+    var sc = list.find(function(s){return s.id===selectedScenario;});
+    if(sc){
+      selDetails = '<div class="card fade-in" style="padding:12px 16px;margin-bottom:12px;border-color:'+mc+'30;background:'+mc+'05;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span style="font-size:18px;">'+sc.icon+'</span>' +
+        '<div style="flex:1;"><div class="fw600 fs12" style="color:var(--white);">'+esc(sc.name)+'</div>' +
+        '<div style="font-size:10px;color:var(--textDim);margin-top:1px;">'+esc(sc.desc)+'</div></div>' +
+        '<div style="text-align:right;"><div class="mono fs10" style="color:'+sc.color+';">'+esc(sc.params)+'</div>' +
+        '<div style="display:flex;gap:3px;margin-top:3px;justify-content:flex-end;">'+pill(sc.id,sc.color)+' '+pill(sc.cat,'var(--textDim)')+'</div></div></div></div>';
+    }
+  }
+
+  return '<div class="fade-in">' +
+    // Sticky header with title + run button
+    '<div class="sticky-header">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="display:flex;align-items:center;gap:12px;">' +
+    '<button class="btn btn-sm btn-default" onclick="showPage(\'hub\')" style="padding:5px 10px;">← Hub</button>' +
+    '<div>'+pill(modeLabel,mc)+' <span class="fw700" style="font-size:16px;color:var(--white);margin-left:6px;">Choose a Scenario</span>' +
+    '<span class="fs11" style="color:var(--textDim);margin-left:8px;">'+list.length+' available</span></div></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="btn btn-sm btn-default" onclick="step=\'custom\';customNLP=\'\';nlpParsed=false;render();">✏️ Custom NLP</button>' +
+    '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--accent),var(--accentSoft));box-shadow:0 2px 12px rgba(59,130,246,.3);opacity:'+(selectedScenario?'1':'.35')+';padding:7px 20px;" '+(selectedScenario?'onclick="openConfigure()"':'disabled')+'>▶ Configure & Run</button>' +
+    '</div></div></div>' +
+    // Selected scenario detail strip
+    selDetails +
+    // Compact grid
+    '<div class="scenario-grid" style="margin-top:8px;">'+cards+'</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OPEN CONFIGURE — transition from library to parameter configuration
+   ═══════════════════════════════════════════════════════════════════════ */
+function openConfigure(){
+  if(!selectedScenario) return;
+  // Initialize configParams from sliderDefs defaults
+  var defs = sliderDefs[selectedScenario] || [];
+  configParams = {};
+  defs.forEach(function(d){ configParams[d.key] = d.defaultVal; });
+  step = 'configure';
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CONFIGURE PAGE — Parameter Review with Sliders + Live Preview Gauges
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderConfigure(){
+  var mc = mode==='deal'?'var(--accent)':mode==='portfolio'?'var(--teal)':'var(--purple)';
+  var modeLabel = mode==='deal'?'Deal-Level':mode==='portfolio'?'Portfolio-Level':'Combined';
+  var allScenarios = scenarios.deal.concat(scenarios.portfolio);
+  var sc = allScenarios.find(function(s){return s.id===selectedScenario;});
+  if(!sc) return '<div>Scenario not found</div>';
+
+  var defs = sliderDefs[selectedScenario] || [];
+  var bf = getFundMetrics();
+  var deals = getDeals();
+
+  // Compute estimated impact from slider values (client-side estimation for real-time preview)
+  var estNavHaircut = 0;
+  var estTimingDelta = 0;
+  defs.forEach(function(d){
+    var val = configParams[d.key] != null ? configParams[d.key] : d.defaultVal;
+    if(d.key === 'nav_haircut_pct' || d.key === 'revenue_drop' || d.key === 'ebitda_drop') estNavHaircut = val / 100;
+    if(d.key === 'exit_multiple') estNavHaircut = val / (selectedScenario.charAt(0)==='P' ? 5 : 10); // rough approximation
+    if(d.key === 'hold_period_delta_years' || d.key === 'hold_period_delta') estTimingDelta = val;
+    if(d.key === 'missed_quarters') estNavHaircut = val * 0.008; // rough
+    if(d.key === 'pik_pct') estTimingDelta = val * 0.015;
+  });
+
+  // Estimate stressed metrics (client-side rough calc for real-time feedback)
+  var totalNav = bf.nav || 0;
+  var estStressedNav = totalNav * (1 - estNavHaircut);
+  // IRR estimation: rough rule — each 10% NAV haircut costs ~200bps IRR, each year delay costs ~300bps
+  var baseIRR = bf.irr || 0;
+  var irrImpact = -(estNavHaircut * 0.20) - (estTimingDelta * 0.03);
+  var estStressedIRR = baseIRR + irrImpact;
+  var estMOIC = (bf.moic || 1) * (1 - estNavHaircut * 0.8);
+  if(selectedScenario === 'P9' || selectedScenario === 'V10'){ // upside scenarios
+    var upside = (configParams['exit_multiple'] || configParams['nav_haircut_pct'] || 10) / 100;
+    estStressedNav = totalNav * (1 + upside);
+    estStressedIRR = baseIRR + upside * 0.15;
+    estMOIC = (bf.moic || 1) * (1 + upside * 0.6);
+  }
+
+  var navDelta = estStressedNav - totalNav;
+  var irrDeltaVal = (estStressedIRR - baseIRR) * 100;
+  var navDeltaPct = totalNav ? ((navDelta / totalNav) * 100).toFixed(1) : '0.0';
+  var isNeg = irrDeltaVal < 0;
+
+  // Live preview gauges
+  var gauges = '<div class="preview-strip">';
+  gauges += previewGauge('Portfolio IRR', pct(baseIRR), pct(estStressedIRR), (irrDeltaVal>=0?'+':'') + irrDeltaVal.toFixed(1) + '%', isNeg, Math.abs(irrDeltaVal)/10);
+  gauges += previewGauge('Fund MOIC', mox(bf.moic), estMOIC.toFixed(2)+'x', (estMOIC>=bf.moic?'+':'') + (estMOIC-bf.moic).toFixed(2)+'x', estMOIC<bf.moic, Math.abs(estMOIC-bf.moic)*2);
+  gauges += previewGauge('Portfolio NAV', fmtM(totalNav), fmtM(estStressedNav), navDeltaPct+'%', navDelta<0, Math.abs(parseFloat(navDeltaPct))/10);
+  if(estTimingDelta > 0) gauges += previewGauge('Hold Period', 'Current', '+'+estTimingDelta.toFixed(1)+' yrs', 'Extended', true, estTimingDelta/3);
+  gauges += '</div>';
+
+  // Parameter sliders
+  var slidersHTML = '';
+  defs.forEach(function(d, idx){
+    var val = configParams[d.key] != null ? configParams[d.key] : d.defaultVal;
+    var displayVal = d.format ? d.format(val) : val;
+
+    if(d.isDealSelector){
+      // Deal selector dropdown instead of slider
+      var opts = deals.map(function(deal,i){
+        return '<option value="'+i+'"'+(val===i?' selected':'')+'>'+esc(deal.name)+' ('+fmtM(deal.curNav)+' NAV)</option>';
+      }).join('');
+      slidersHTML += '<div class="param-row">' +
+        '<div class="param-label-col"><div class="param-label">'+esc(d.label)+'</div><div class="param-sublabel">'+esc(d.sublabel)+'</div></div>' +
+        '<div class="param-slider-col"><select style="flex:1;padding:8px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;" onchange="configParams[\''+d.key+'\']=parseInt(this.value);render();">'+opts+'</select></div></div>';
+    } else if(d.isSelector){
+      var opts2 = (d.options||[]).map(function(o,i){
+        return '<option value="'+i+'"'+(val===i?' selected':'')+'>'+esc(o)+'</option>';
+      }).join('');
+      slidersHTML += '<div class="param-row">' +
+        '<div class="param-label-col"><div class="param-label">'+esc(d.label)+'</div><div class="param-sublabel">'+esc(d.sublabel)+'</div></div>' +
+        '<div class="param-slider-col"><select style="flex:1;padding:8px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;" onchange="configParams[\''+d.key+'\']=parseInt(this.value);render();">'+opts2+'</select></div></div>';
+    } else {
+      slidersHTML += '<div class="param-row">' +
+        '<div class="param-label-col"><div class="param-label">'+esc(d.label)+'</div><div class="param-sublabel">'+esc(d.sublabel)+'</div></div>' +
+        '<div class="param-slider-col">' +
+        '<span class="param-base-val">'+d.min+(d.unit==='%'?'%':d.unit==='bps'?' bps':d.unit==='yrs'?' yr':'')+'</span>' +
+        '<input type="range" class="param-slider" min="'+d.min+'" max="'+d.max+'" step="'+d.step+'" value="'+val+'" oninput="configParams[\''+d.key+'\']=parseFloat(this.value);render();">' +
+        '<span class="param-base-val">'+d.max+(d.unit==='%'?'%':d.unit==='bps'?' bps':d.unit==='yrs'?' yr':'')+'</span>' +
+        '<div class="param-value-box">'+displayVal+'</div>' +
+        '</div></div>';
+    }
+  });
+
+  // Current vs Stressed summary table for context
+  var contextHTML = '<div class="card" style="padding:14px 18px;margin-bottom:16px;">' +
+    '<div class="fw600 fs11" style="color:var(--textDim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Current Portfolio (Base Case)</div>' +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;">';
+  deals.slice(0,8).forEach(function(d){
+    var estDealNav = d.curNav * (1 - estNavHaircut);
+    var changed = Math.abs(estNavHaircut) > 0.001;
+    contextHTML += '<div style="padding:8px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);min-width:140px;">' +
+      '<div class="fs10 fw600" style="color:var(--textMuted);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(d.name)+'</div>' +
+      '<div style="display:flex;align-items:baseline;gap:6px;">' +
+      '<span class="mono fs11" style="color:var(--textDim);'+(changed?'text-decoration:line-through;':'')+'">'+fmtM(d.curNav)+'</span>' +
+      (changed ? '<span class="mono fs12 fw700" style="color:var(--orange);">→ '+fmtM(estDealNav)+'</span>' : '') +
+      '</div></div>';
+  });
+  contextHTML += '</div></div>';
+
+  return '<div class="fade-in">' +
+    // Header
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+    '<div><div style="display:flex;gap:8px;margin-bottom:4px;">'+pill(modeLabel,mc)+' '+pill(sc.id,sc.color)+'</div>' +
+    '<h1 style="font-size:20px;font-weight:700;color:var(--white);margin:0;">'+sc.icon+' '+esc(sc.name)+'</h1>' +
+    '<p class="fs11" style="color:var(--textDim);margin:4px 0 0;">'+esc(sc.desc)+'</p></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="btn btn-sm btn-default" onclick="step=\'library\';render();">← Back</button>' +
+    '<button class="btn btn-primary" style="padding:10px 28px;font-size:13px;background:linear-gradient(135deg,var(--green),#16A34A);box-shadow:0 3px 16px rgba(34,197,94,.3);" onclick="confirmAndRun();">▶ Run Simulation</button></div></div>' +
+    // Live preview gauges
+    gauges +
+    // Slider controls
+    '<div class="card" style="padding:18px 20px;margin-bottom:16px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+    '<div class="fw600 fs13" style="color:var(--white);">Adjust Parameters</div>' +
+    '<button class="btn btn-sm btn-default" style="font-size:10px;" onclick="resetSliders();">↩ Reset to Default</button></div>' +
+    slidersHTML + '</div>' +
+    // Deal-level context
+    contextHTML +
+    '</div>';
+}
+
+function previewGauge(label, baseVal, stressedVal, deltaStr, isNeg, barPct){
+  barPct = Math.min(barPct || 0, 1);
+  var barColor = isNeg ? 'var(--red)' : 'var(--green)';
+  return '<div class="preview-gauge'+(Math.abs(barPct)>0.01?' impacted':'')+'">' +
+    '<div class="gauge-label">'+label+'</div>' +
+    '<div class="gauge-base">Base: '+baseVal+'</div>' +
+    '<div class="gauge-stressed" style="color:'+(isNeg?'var(--orange)':'var(--teal)')+';">'+stressedVal+'</div>' +
+    '<div class="gauge-delta" style="color:'+(isNeg?'var(--red)':'var(--green)')+';">'+deltaStr+'</div>' +
+    '<div class="preview-bar"><div class="preview-bar-fill" style="width:'+Math.round(barPct*100)+'%;background:'+barColor+';"></div></div></div>';
+}
+
+function resetSliders(){
+  var defs = sliderDefs[selectedScenario] || [];
+  configParams = {};
+  defs.forEach(function(d){ configParams[d.key] = d.defaultVal; });
+  render();
+}
+
+function confirmAndRun(){
+  if(!selectedScenario) return;
+  var allScenarios = scenarios.deal.concat(scenarios.portfolio);
+  var sc = allScenarios.find(function(s){return s.id===selectedScenario;});
+  if(!sc) return;
+
+  simName = sc.name;
+  aiSpend = {input_tokens:0, output_tokens:0, cost:0, used:false}; // No AI for pre-built
+
+  // Build params from slider values, mapping back to engine format
+  var defs = sliderDefs[selectedScenario] || [];
+  var engineParams = {};
+
+  // Start with default simParams
+  for(var k in sc.simParams.params){ engineParams[k] = sc.simParams.params[k]; }
+
+  // Override with slider-adjusted values
+  defs.forEach(function(d){
+    var val = configParams[d.key] != null ? configParams[d.key] : d.defaultVal;
+    if(d.key === 'nav_haircut_pct' || d.key === 'revenue_drop' || d.key === 'ebitda_drop'){
+      engineParams.nav_haircut_pct = val / 100;
+    } else if(d.key === 'hold_period_delta_years' || d.key === 'hold_period_delta'){
+      if(sc.simParams.params.hold_period_delta_years !== undefined) engineParams.hold_period_delta_years = val;
+      else engineParams.hold_period_delta = val;
+    } else if(d.key === 'exit_multiple'){
+      engineParams.exit_multiple = selectedScenario.charAt(0)==='P' ? val/100 : -(val/10);
+    } else if(d.key === 'exclude_deal'){
+      var deals = getDeals();
+      if(deals[val]) engineParams.target_entity = deals[val].pathKey;
+    }
+  });
+
+  var allEntities = BUNDLE.deals.map(function(d){return d.pathKey;});
+  var targetEntities = engineParams.target_entity ? [engineParams.target_entity] : allEntities;
+  delete engineParams.target_entity;
+
+  var config = {
+    template: sc.simParams.template,
+    target_entities: targetEntities,
+    params: engineParams
+  };
+
+  executeSimulation([config], function(result){
+    if(result){ step='results'; simRan=true; simSaved=false; }
+    render();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CUSTOM NLP SCENARIO
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderCustom(){
+  var mc = mode==='deal'?'var(--accent)':mode==='portfolio'?'var(--teal)':'var(--purple)';
+  var dealNames = getDeals().map(function(d){return d.name;});
+  var examples = mode==='deal' ? [
+    'What if interest rates rise by 150 basis points?',
+    'Simulate a 30% NAV haircut across all deals',
+    'Show me impact if EBITDA drops 25%'
+  ] : [
+    'What happens if all exits are delayed by 3 years?',
+    dealNames[0] ? 'Remove '+dealNames[0]+' from the portfolio' : 'Remove a deal from the portfolio',
+    dealNames[0] ? 'What exit does '+dealNames[0]+' need for 20% fund IRR?' : 'Backsolve for 20% IRR'
+  ];
+
+  var parsedSection='';
+  if(nlpParsed && nlpParams){
+    parsedSection = '<div class="card fade-in" style="padding:16px 20px;margin-top:16px;border-color:'+mc+'40;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
+      '<span style="font-size:14px;">🔍</span><span class="fw600 fs13" style="color:var(--white);">Interpreted Parameters</span>'+pill('AI Parsed',mc)+'</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px;">';
+    nlpParams.forEach(function(p){
+      parsedSection += '<div style="padding:10px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);">' +
+        '<div class="fs10" style="color:var(--textDim);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;">'+esc(p.label)+'</div>' +
+        '<div class="mono fw600 fs13" style="color:'+mc+';">'+esc(p.value)+'</div></div>';
+    });
+    parsedSection += '</div>';
+    // AI spend in parsed confirmation
+    if(aiSpend.used){
+      var totalTok = aiSpend.input_tokens + aiSpend.output_tokens;
+      var tokStr = totalTok >= 1000 ? (totalTok/1000).toFixed(1)+'K' : totalTok;
+      parsedSection += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:14px;border-radius:8px;background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.12);">' +
+        '<span style="font-size:12px;">🤖</span>' +
+        '<span class="fs10" style="color:var(--textDim);">AI Cost:</span>' +
+        '<span class="mono fw700 fs12" style="color:var(--purple);">$'+aiSpend.cost.toFixed(4)+'</span>' +
+        '<span class="fs10" style="color:var(--textDim);">•</span>' +
+        '<span class="mono fs10" style="color:var(--textMuted);">'+tokStr+' tokens ('+aiSpend.input_tokens+' in / '+aiSpend.output_tokens+' out)</span>' +
+        '<span class="fs10" style="color:var(--textDim);">•</span>' +
+        '<span class="mono fs10" style="color:var(--textMuted);">'+(SIM_CONFIG.apiModel||'claude-sonnet-4')+'</span></div>';
+    }
+    parsedSection += '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+      '<button class="btn btn-sm btn-default" onclick="nlpParsed=false;render();">✏️ Modify</button>' +
+      '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--green),#16A34A);box-shadow:0 2px 8px rgba(34,197,94,.3);" onclick="runCustomScenario();">✓ Confirm & Run</button></div></div>';
+  }
+
+  return '<div class="fade-in">' +
+    '<div style="margin-bottom:20px;">' +
+    '<div style="display:flex;gap:8px;margin-bottom:6px;">'+pill('Custom Scenario',mc)+' '+pill(mode==='deal'?'Deal-Level':'Portfolio-Level','var(--textMuted)')+'</div>' +
+    '<h1 style="font-size:22px;font-weight:700;color:var(--white);margin:0 0 4px;">Describe Your Scenario</h1>' +
+    '<p class="fs12" style="color:var(--textDim);margin:0;">Write what you want to simulate in plain English — AI translates to parameters, XIRR computed deterministically</p></div>' +
+    '<div class="card" style="padding:20px;">' +
+    '<textarea class="nlp-box" id="nlpInput" placeholder="Describe the scenario you want to simulate...">'+esc(customNLP)+'</textarea>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+    examples.map(function(e){return '<button class="btn btn-sm btn-default" style="font-size:10px;max-width:280px;text-align:left;white-space:normal;line-height:1.3;padding:6px 10px;" onclick="document.getElementById(\'nlpInput\').value=\''+e.replace(/'/g,"\\'")+'\';customNLP=\''+e.replace(/'/g,"\\'")+'\';render();">\"'+esc(e.substring(0,50))+'...\"</button>';}).join('') +
+    '</div>' +
+    '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--accent),var(--accentSoft));" onclick="parseNLP();">'+(isLoading?'<span class="spinner"></span> Parsing…':'🔍 Parse Scenario')+'</button></div></div>' +
+    parsedSection +
+    '<div style="margin-top:16px;"><button class="btn btn-sm btn-default" onclick="step=\'library\';render();">← Back to Scenario Library</button></div></div>';
+}
+
+function parseNLP(){
+  var input = document.getElementById('nlpInput');
+  customNLP = input ? input.value : '';
+  if(!customNLP.trim()) return;
+
+  isLoading=true; statusText='AI parsing scenario…'; render();
+
+  callAI(customNLP, function(aiResp, aiError){
+    isLoading=false;
+    if(aiError){
+      statusText=aiError; render(); return;
+    }
+    if(aiResp && aiResp.needs_clarification){
+      statusText = aiResp.clarification_question || 'Please clarify your scenario.';
+      render(); return;
+    }
+
+    // Build display params from AI response
+    nlpParams = [];
+    if(aiResp.thinking) nlpParams.push({label:'Interpretation',value:aiResp.thinking});
+    if(aiResp.scenarios && aiResp.scenarios.length){
+      var sc = aiResp.scenarios[0];
+      nlpParams.push({label:'Template',value:sc.template});
+      nlpParams.push({label:'Targets',value:(sc.target_entities||['All Deals']).join(', ')});
+      for(var k in sc.params){nlpParams.push({label:k,value:String(sc.params[k])||''});}
+    }
+    if(aiResp.assumptions){nlpParams.push({label:'Assumptions',value:aiResp.assumptions.join('; ')});}
+
+    // Store for execution
+    window._pendingAIScenarios = aiResp.scenarios || [];
+    nlpParsed=true;
+    render();
+  });
+}
+
+function runCustomScenario(){
+  var aiScenarios = window._pendingAIScenarios || [];
+  if(aiScenarios.length === 0){
+    // Fallback: use default stress
+    aiScenarios = [{template:'SC-03',target_entities:[],params:{nav_haircut_pct:0.15}}];
+  }
+  selectedScenario = 'Custom';
+  simName = 'Custom: ' + (customNLP||'').substring(0,40);
+  executeSimulation(aiScenarios, function(result){
+    if(result){step='results';simRan=true;simSaved=false;}
+    render();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RUN PRE-BUILT SCENARIO — Now routes through Configure step
+   ═══════════════════════════════════════════════════════════════════════ */
+function runScenario(){
+  // This is now only called as a fallback — primary flow goes through openConfigure()
+  openConfigure();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESULTS PAGE — Summary, Charts, Sensitivity, Deal Table, CF Audit
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderResults(){
+  var mc = mode==='deal'?'var(--accent)':mode==='portfolio'?'var(--teal)':'var(--purple)';
+  var modeLabel = mode==='deal'?'Deal-Level':mode==='portfolio'?'Portfolio-Level':'Combined';
+  var bf = getFundMetrics();
+  var sf = getSimFund();
+  var deals = getSimDeals();
+
+  // Loading state
+  if(isLoading){
+    return '<div class="fade-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40vh;">' +
+      '<span class="spinner" style="width:24px;height:24px;margin-bottom:16px;"></span>' +
+      '<div class="fw600 fs13" style="color:var(--white);margin-bottom:4px;">'+esc(statusText)+'</div>' +
+      '<div class="fs11" style="color:var(--textDim);">Running XIRR computation via IRR Engine v2.0</div></div>';
+  }
+
+  // Portfolio metrics comparison
+  var irrDelta = (sf.irr - bf.irr) * 100;
+  var metricsHTML = '<div class="card" style="padding:18px 22px;margin-bottom:16px;"><div style="display:flex;gap:20px;flex-wrap:wrap;">' +
+    '<div class="metric"><div class="metric-label">Base IRR</div><div class="metric-value" style="color:var(--teal);">'+pct(bf.irr)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">Stressed IRR</div><div class="metric-value" style="color:var(--orange);">'+pct(sf.irr)+'</div><div class="metric-sub">▼ '+Math.abs(irrDelta).toFixed(1)+'%</div></div>' +
+    '<div class="metric"><div class="metric-label">Base MOIC</div><div class="metric-value" style="color:var(--teal);">'+mox(bf.moic)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">Stressed MOIC</div><div class="metric-value" style="color:var(--orange);">'+mox(sf.moic)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">Base NAV</div><div class="metric-value" style="color:var(--teal);">'+fmtM(bf.nav)+'</div></div>' +
+    '<div class="metric"><div class="metric-label">Stressed NAV</div><div class="metric-value" style="color:var(--orange);">'+fmtM(sf.nav)+'</div></div>' +
+    '</div>';
+
+  // Attribution bar for combined
+  if(valEnabled && perfEnabled){
+    metricsHTML += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">' +
+      '<div class="fs11" style="color:var(--textDim);margin-bottom:8px;">IRR Attribution Decomposition</div>' +
+      '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:6px;">' +
+      '<div style="width:40%;background:var(--accent);"></div><div style="width:35%;background:var(--orange);"></div><div style="width:25%;background:var(--red);"></div></div>' +
+      '<div style="display:flex;gap:16px;"><span class="fs10" style="color:var(--accent);">● Valuation Stress</span><span class="fs10" style="color:var(--orange);">● Timing Stress</span><span class="fs10" style="color:var(--red);">● Interaction Effect</span></div></div>';
+  }
+  metricsHTML += '</div>';
+
+  // Mutations
+  var mutHTML = '';
+  if(simResult && simResult.mutations && simResult.mutations.length){
+    mutHTML = '<div class="card" style="padding:14px 18px;margin-bottom:16px;background:rgba(59,130,246,.03);border-color:rgba(59,130,246,.12);">' +
+      '<div class="fw600 fs12" style="color:var(--white);margin-bottom:8px;">Applied Mutations</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    simResult.mutations.forEach(function(m){
+      mutHTML += '<span class="pill" style="color:var(--orange);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);font-size:10px;">'+esc(m)+'</span>';
+    });
+    mutHTML += '</div></div>';
+  }
+
+  // Charts
+  var chartHTML = '<div style="display:flex;gap:12px;margin-bottom:16px;">' +
+    '<div class="card" style="flex:1;padding:16px;"><div class="fw600 fs12" style="color:var(--white);margin-bottom:12px;">IRR: Base vs Stressed</div><canvas id="chartIRR" height="180"></canvas></div>' +
+    '<div class="card" style="flex:1;padding:16px;"><div class="fw600 fs12" style="color:var(--white);margin-bottom:12px;">MOIC: Base vs Stressed</div><canvas id="chartMOIC" height="180"></canvas></div>' +
+    '<div class="card" style="flex:1;padding:16px;"><div class="fw600 fs12" style="color:var(--white);margin-bottom:12px;">NAV: Actual vs Stressed</div><canvas id="chartNAV" height="180"></canvas></div></div>';
+
+  // Deal-level results table
+  var headers = '<th></th><th>Deal</th><th>Sector</th><th>Base IRR</th><th>Stressed IRR</th><th>IRR Δ</th><th>Base MOIC</th><th>Stressed MOIC</th><th>Base NAV</th><th>Stressed NAV</th>';
+  var dealRows = '';
+  deals.forEach(function(d){
+    var si = d.simIRR != null ? d.simIRR : d.baseIRR;
+    var sm = d.simMOIC != null ? d.simMOIC : d.baseMOIC;
+    var irrD = ((si - d.baseIRR) * 100).toFixed(1);
+    var navD = d.strNav - d.curNav;
+    var isExp = expandedDeals[d.pathKey] || showAllDeltas;
+    var cfPanel = isExp ? '<tr><td colspan="20" style="padding:0;">'+renderCFPanel(d)+'</td></tr>' : '';
+    dealRows += '<tr class="'+(isExp?'sel':'')+'" style="cursor:pointer;" onclick="expandedDeals[\''+d.pathKey+'\']=!expandedDeals[\''+d.pathKey+'\'];render();">' +
+      '<td style="width:28px;"><span style="font-size:11px;color:'+(isExp?'var(--accent)':'var(--textDim)')+';display:inline-block;transform:rotate('+(isExp?90:0)+'deg);">▶</span></td>' +
+      '<td class="fs12 fw600" style="color:var(--white);">'+esc(d.name)+'</td>' +
+      '<td>'+pill(d.sector||'—','var(--textMuted)')+'</td>' +
+      '<td class="mono fs12" style="color:var(--textMuted);">'+pct(d.baseIRR)+'</td>' +
+      '<td class="mono fs12 fw600" style="color:var(--orange);">'+pct(si)+'</td>' +
+      '<td class="mono fs11 fw600" style="color:'+(parseFloat(irrD)<0?'var(--red)':'var(--green)')+';">'+irrD+'%</td>' +
+      '<td class="mono fs12" style="color:var(--textMuted);">'+mox(d.baseMOIC)+'</td>' +
+      '<td class="mono fs12 fw600" style="color:var(--orange);">'+mox(sm)+'</td>' +
+      '<td class="mono fs12" style="color:var(--textMuted);">'+fmtM(d.curNav)+'</td>' +
+      '<td class="mono fs12 fw600" style="color:'+(navD<0?'var(--red)':'var(--teal)')+';">'+fmtM(d.strNav)+'</td></tr>' + cfPanel;
+  });
+
+  var dealTable = '<div class="card" style="overflow:hidden;">' +
+    '<div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><span class="fw600 fs12" style="color:var(--white);">Deal-Level Results</span><span class="fs10" style="color:var(--textDim);">Click row → cashflow delta</span></div>' +
+    '<button class="btn btn-sm btn-outline" style="border-color:var(--purple);color:var(--purple);" onclick="showAllDeltas=!showAllDeltas;render();">'+(showAllDeltas?'Hide':'Show')+' All CF Deltas</button></div>' +
+    '<div style="overflow-x:auto;"><table><thead><tr>'+headers+'</tr></thead><tbody>'+dealRows+'</tbody></table></div></div>';
+
+  // Save bar
+  var saveHTML = '';
+  if(!simSaved){
+    saveHTML = '<div class="card fade-in" style="margin-top:16px;background:rgba(34,197,94,.04);border-color:rgba(34,197,94,.15);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><div class="fw600 fs12" style="color:var(--white);">Save this simulation?</div><div class="fs11" style="color:var(--textMuted);">Preserve for comparison, audit, and sharing.</div></div>' +
+      '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--green),#16A34A);" onclick="saveSimulation();">💾 Save "'+esc(simName)+'"</button></div>';
+  } else {
+    saveHTML = '<div class="card fade-in" style="margin-top:16px;background:rgba(34,197,94,.04);border-color:rgba(34,197,94,.15);padding:12px 20px;display:flex;align-items:center;gap:10px;">' +
+      '<span style="color:var(--green);font-size:16px;">✓</span><span class="fw600 fs12" style="color:var(--green);">Saved as SIM-'+String(simCounter).padStart(3,'0')+'</span>' +
+      '<span class="fs11" style="color:var(--textDim);margin-left:8px;">"'+esc(simName)+'"</span></div>';
+  }
+
+  // AI Spend display
+  var aiSpendHTML = '';
+  if(aiSpend.used){
+    var totalTok = aiSpend.input_tokens + aiSpend.output_tokens;
+    var tokStr = totalTok >= 1000 ? (totalTok/1000).toFixed(1)+'K' : totalTok;
+    aiSpendHTML = '<div class="card" style="padding:10px 16px;margin-bottom:16px;background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.15);display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:14px;">🤖</span>' +
+      '<div style="flex:1;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+      '<div><span class="fs10" style="color:var(--textDim);">AI Cost</span> <span class="mono fw700 fs13" style="color:var(--purple);">$'+aiSpend.cost.toFixed(4)+'</span></div>' +
+      '<div><span class="fs10" style="color:var(--textDim);">Tokens</span> <span class="mono fw600 fs11" style="color:var(--textMuted);">'+tokStr+' ('+aiSpend.input_tokens+' in / '+aiSpend.output_tokens+' out)</span></div>' +
+      '<div><span class="fs10" style="color:var(--textDim);">Model</span> <span class="mono fs10" style="color:var(--textMuted);">'+(SIM_CONFIG.apiModel||'claude-sonnet-4')+'</span></div>' +
+      '</div>' +
+      '<span class="pill" style="color:var(--purple);background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);">NLP Parsed</span></div>';
+  } else {
+    aiSpendHTML = '<div class="card" style="padding:10px 16px;margin-bottom:16px;background:rgba(20,184,166,.03);border-color:rgba(20,184,166,.1);display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:14px;">⚡</span>' +
+      '<div style="flex:1;">' +
+      '<span class="fs10" style="color:var(--textDim);">AI Cost</span> <span class="mono fw700 fs13" style="color:var(--teal);">$0.00</span>' +
+      '<span class="fs11" style="color:var(--textDim);margin-left:12px;">Pre-built template — no AI tokens consumed</span></div>' +
+      '<span class="pill" style="color:var(--teal);background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.2);">Template-Based</span></div>';
+  }
+
+  return '<div class="fade-in">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+    '<div><div style="display:flex;gap:8px;margin-bottom:4px;">'+pill(modeLabel,mc)+' '+pill(selectedScenario||'Custom','var(--textMuted)')+'</div>' +
+    '<h1 style="font-size:20px;font-weight:700;color:var(--white);margin:0;">'+esc(simName)+'</h1></div>' +
+    '<div style="display:flex;gap:8px;"><button class="btn btn-sm btn-default" onclick="step=\'library\';simRan=false;simResult=null;render();">← Change Scenario</button>' +
+    '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--green),#16A34A);" onclick="saveSimulation();">💾 Save</button></div></div>' +
+    aiSpendHTML + metricsHTML + mutHTML + chartHTML + dealTable + saveHTML + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CASHFLOW DELTA AUDIT PANEL
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderCFPanel(d){
+  // Build synthetic CF delta from base vs sim
+  var baseCF = d.curNav;
+  var stressCF = d.strNav;
+  var delta = stressCF - baseCF;
+  var pctDelta = baseCF ? ((delta/baseCF)*100).toFixed(1) : '0.0';
+
+  // Simple display — in production this would come from the engine's mutation log
+  var items = [
+    {date:'Historical',type:'Capital Calls',base:-Math.abs(d.invested||baseCF*0.7),stress:-Math.abs(d.invested||baseCF*0.7),status:'unchanged',note:'Actual historical — unchanged'},
+    {date:'Current',type:'Current NAV',base:baseCF,stress:stressCF,status:delta!==0?'modified':'unchanged',note:delta!==0?'NAV stressed: '+fmtM(baseCF)+' → '+fmtM(stressCF):''},
+  ];
+  if(perfEnabled && exitDelay>0){
+    items.push({date:'Projected',type:'Terminal Exit',base:baseCF,stress:null,status:'removed',note:'Removed: exit delayed '+exitDelay+'yr'});
+    items.push({date:'Stressed',type:'Delayed Exit',base:null,stress:stressCF,status:'added',note:'Added: delayed exit (+'+exitDelay+'yr)'});
+  }
+
+  var counts={all:items.length,unchanged:0,modified:0,added:0,removed:0};
+  items.forEach(function(c){counts[c.status]++;});
+  counts.changes=counts.modified+counts.added+counts.removed;
+  var filtered=cfFilter==='all'?items:cfFilter==='changes'?items.filter(function(c){return c.status!=='unchanged';}):items.filter(function(c){return c.status===cfFilter;});
+
+  var sc={unchanged:{c:'var(--textDim)',i:'─',l:'Unchanged'},modified:{c:'var(--orange)',i:'✎',l:'Modified'},added:{c:'var(--green)',i:'+',l:'Added'},removed:{c:'var(--red)',i:'×',l:'Removed'}};
+
+  var rows=filtered.map(function(cf){
+    var s=sc[cf.status];
+    var bStr=cf.base===null?'—':fmtM(cf.base);
+    var sStr=cf.stress===null?'—':fmtM(cf.stress);
+    return '<tr style="background:'+s.c+'06;">' +
+      '<td><div style="display:flex;align-items:center;gap:6px;"><span class="status-icon" style="font-size:'+(cf.status==='added'?14:11)+'px;color:'+s.c+';background:'+s.c+'18;border:1px solid '+s.c+'30;">'+s.i+'</span><span class="fs10 fw600" style="color:'+s.c+';">'+s.l+'</span></div></td>' +
+      '<td class="mono fs12">'+esc(cf.date)+'</td><td class="fs11" style="color:var(--textMuted);">'+esc(cf.type)+'</td>' +
+      '<td class="mono fs12" style="color:var(--textMuted);'+(cf.status==='removed'?'text-decoration:line-through;opacity:.6;':'')+'">'+bStr+'</td>' +
+      '<td class="mono fs12 fw600" style="color:'+(cf.status==='modified'||cf.status==='added'?'var(--orange)':'var(--text)')+';">'+sStr+'</td>' +
+      '<td class="fs10" style="color:'+(cf.note?s.c:'var(--textDim)')+';max-width:200px;">'+esc(cf.note||'—')+'</td></tr>';
+  }).join('');
+
+  var fBtns=[{k:'all',l:'All ('+counts.all+')'},{k:'changes',l:'Changes ('+counts.changes+')'},{k:'modified',l:'Modified ('+counts.modified+')',c:'var(--orange)'},{k:'added',l:'Added ('+counts.added+')',c:'var(--green)'},{k:'removed',l:'Removed ('+counts.removed+')',c:'var(--red)'}];
+  var filterHTML = fBtns.map(function(f){
+    return '<button class="cf-filter-btn '+(cfFilter===f.k?'active':'')+'" onclick="event.stopPropagation();cfFilter=\''+f.k+'\';render();" '+(f.c&&cfFilter===f.k?'style="border-color:'+f.c+';background:'+f.c+'15;color:'+f.c+';"':'')+'>'+f.l+'</button>';
+  }).join('');
+
+  return '<div style="border-top:1px solid var(--border);" onclick="event.stopPropagation();">' +
+    '<div class="cf-summary-strip"><div><div class="fs10" style="color:var(--textDim);text-transform:uppercase;">Base NAV</div><div class="mono fw700" style="font-size:14px;color:var(--teal);">'+fmtM(baseCF)+'</div></div>' +
+    '<div style="font-size:16px;color:var(--textDim);">→</div>' +
+    '<div><div class="fs10" style="color:var(--textDim);text-transform:uppercase;">Stressed NAV</div><div class="mono fw700" style="font-size:14px;color:var(--orange);">'+fmtM(stressCF)+'</div></div>' +
+    '<div style="font-size:16px;color:var(--textDim);">Δ</div>' +
+    '<div><div class="fs10" style="color:var(--textDim);text-transform:uppercase;">Net Change</div><div class="mono fw700" style="font-size:14px;color:'+(delta<0?'var(--red)':'var(--green)')+';">'+pctDelta+'%</div></div></div>' +
+    '<div class="cf-filters">'+filterHTML+'</div>' +
+    '<div style="max-height:300px;overflow:auto;"><table><thead><tr><th>Status</th><th>Period</th><th>Type</th><th>Base</th><th>Stressed</th><th>Detail</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SAVE SIMULATION
+   ═══════════════════════════════════════════════════════════════════════ */
+function saveSimulation(){
+  simCounter++;
+  var simId = 'SIM-'+String(simCounter).padStart(3,'0');
+  var sf = getSimFund();
+  var bf = getFundMetrics();
+  var irrDelta = ((sf.irr - bf.irr)*100).toFixed(1);
+
+  savedSims.push({
+    id: simId,
+    name: simName,
+    type: mode,
+    scenario: selectedScenario || 'Custom',
+    date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+    sirr: pct(sf.irr),
+    smoic: mox(sf.moic),
+    nav: sf.nav !== bf.nav ? ((sf.nav-bf.nav)/bf.nav*100).toFixed(1)+'%' : null,
+    irrDelta: irrDelta
+  });
+  simSaved=true;
+
+  // Persist to Simulation_Log sheet
+  try {
+    google.script.run.saveSimulationToLog({
+      simId: simId,
+      query: simName,
+      scenarios: [{template:selectedScenario||'Custom'}],
+      baseIRR: bf.irr,
+      simIRR: sf.irr,
+      deltaBPS: Math.round((sf.irr - bf.irr) * 10000),
+      mutations: simResult && simResult.mutations ? simResult.mutations : []
+    });
+  } catch(e){}
+
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SAVED SIMULATIONS PAGE
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderSaved(){
+  if(savedSims.length===0){
+    return '<div class="fade-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;">' +
+      '<div style="font-size:36px;margin-bottom:16px;opacity:.3;">◫</div>' +
+      '<div class="fw600 fs14" style="color:var(--textMuted);margin-bottom:8px;">No saved simulations yet</div>' +
+      '<div class="fs12" style="color:var(--textDim);margin-bottom:20px;">Run a scenario from the Simulation Hub and save the results</div>' +
+      '<button class="btn btn-primary" style="background:linear-gradient(135deg,var(--accent),var(--accentSoft));" onclick="showPage(\'hub\')">Go to Simulation Hub</button></div>';
+  }
+
+  var rows = savedSims.map(function(s){
+    var c=s.type==='deal'?'var(--accent)':s.type==='portfolio'?'var(--teal)':'var(--purple)';
+    return '<tr><td><div class="fw600 fs12" style="color:var(--white);">'+esc(s.name)+'</div><div class="fs10" style="color:var(--textDim);">'+s.id+'</div></td>' +
+      '<td>'+pill(s.type==='deal'?'Deal-Level':s.type==='portfolio'?'Portfolio-Level':'Combined',c)+'</td>' +
+      '<td class="fs11" style="color:var(--textMuted);">'+esc(s.scenario)+'</td>' +
+      '<td class="fs11" style="color:var(--textMuted);">'+s.date+'</td>' +
+      '<td class="mono fs12 fw600" style="color:'+(s.nav?'var(--orange)':'var(--textDim)')+';">'+(s.nav||'—')+'</td>' +
+      '<td class="mono fs12 fw600" style="color:var(--teal);">'+s.sirr+'</td>' +
+      '<td class="mono fs12 fw600" style="color:var(--textMuted);">'+s.smoic+'</td></tr>';
+  }).join('');
+
+  return '<div class="fade-in">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">' +
+    '<div><h1 style="font-size:22px;font-weight:700;color:var(--white);margin:0 0 6px;">Saved Simulations</h1><p class="fs12" style="color:var(--textDim);margin:0;">Load, compare, or export past simulation runs</p></div>' +
+    '<button class="btn btn-sm btn-primary" style="background:linear-gradient(135deg,var(--purple),var(--purpleSoft));" onclick="showPage(\'compare\')">⇅ Compare Scenarios</button></div>' +
+    '<div class="card" style="overflow:hidden;"><table><thead><tr><th>Simulation</th><th>Type</th><th>Scenario</th><th>Date</th><th>NAV Impact</th><th>Stressed IRR</th><th>Stressed MOIC</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMPARE SCENARIOS PAGE
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderCompare(){
+  if(savedSims.length < 2){
+    return '<div class="fade-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;">' +
+      '<div style="font-size:36px;margin-bottom:16px;opacity:.3;">⇅</div>' +
+      '<div class="fw600 fs14" style="color:var(--textMuted);margin-bottom:8px;">Need at least 2 saved simulations to compare</div>' +
+      '<div class="fs12" style="color:var(--textDim);margin-bottom:20px;">Run and save scenarios from the Simulation Hub first</div>' +
+      '<button class="btn btn-primary" style="background:linear-gradient(135deg,var(--accent),var(--accentSoft));" onclick="showPage(\'hub\')">Go to Simulation Hub</button></div>';
+  }
+
+  var selCount = 0;
+  for(var k in compareSelected){if(compareSelected[k])selCount++;}
+
+  var rows = savedSims.map(function(s){
+    var c=s.type==='deal'?'var(--accent)':s.type==='portfolio'?'var(--teal)':'var(--purple)';
+    var checked = compareSelected[s.id];
+    if(checked) selCount; // just for reference
+    return '<tr class="'+(checked?'sel':'')+'">' +
+      '<td style="width:40px;"><div class="compare-check '+(checked?'checked':'')+'" onclick="compareSelected[\''+s.id+'\']=!compareSelected[\''+s.id+'\'];render();">'+(checked?'✓':'')+'</div></td>' +
+      '<td><div class="fw600 fs12" style="color:var(--white);">'+esc(s.name)+'</div><div class="fs10" style="color:var(--textDim);">'+s.id+'</div></td>' +
+      '<td>'+pill(s.type==='deal'?'Deal':s.type==='portfolio'?'Portfolio':'Combined',c)+'</td>' +
+      '<td class="fs11" style="color:var(--textMuted);">'+esc(s.scenario)+'</td>' +
+      '<td class="mono fs12 fw600" style="color:'+(s.nav?'var(--orange)':'var(--textDim)')+';">'+(s.nav||'—')+'</td>' +
+      '<td class="mono fs12 fw600" style="color:var(--teal);">'+s.sirr+'</td>' +
+      '<td class="mono fs12 fw600" style="color:var(--textMuted);">'+s.smoic+'</td></tr>';
+  }).join('');
+
+  // Comparison charts when 2+ selected
+  var comparisonHTML = '';
+  if(selCount >= 2){
+    var selected = savedSims.filter(function(s){return compareSelected[s.id];});
+    comparisonHTML = '<div class="card fade-in" style="padding:20px;margin-bottom:16px;">' +
+      '<div class="fw600 fs13" style="color:var(--white);margin-bottom:16px;">Scenario Comparison — '+selCount+' Selected</div>' +
+      '<div style="display:flex;gap:12px;margin-bottom:16px;">' +
+      '<div class="card" style="flex:1;padding:14px;"><div class="fw600 fs12" style="color:var(--white);margin-bottom:10px;">IRR Comparison</div><canvas id="compareIRR" height="160"></canvas></div>' +
+      '<div class="card" style="flex:1;padding:14px;"><div class="fw600 fs12" style="color:var(--white);margin-bottom:10px;">MOIC Comparison</div><canvas id="compareMOIC" height="160"></canvas></div></div>' +
+      '<table><thead><tr><th>Scenario</th><th>Type</th><th>NAV Impact</th><th>Stressed IRR</th><th>Stressed MOIC</th><th>IRR vs Base</th></tr></thead><tbody>' +
+      '<tr style="background:rgba(20,184,166,.06);"><td class="fw600 fs12" style="color:var(--teal);">Base Case (Current)</td><td>—</td><td>—</td><td class="mono fs12 fw600" style="color:var(--teal);">'+pct(getFundMetrics().irr)+'</td><td class="mono fs12 fw600">'+mox(getFundMetrics().moic)+'</td><td>—</td></tr>';
+    selected.forEach(function(s){
+      var c=s.type==='deal'?'var(--accent)':s.type==='portfolio'?'var(--teal)':'var(--purple)';
+      comparisonHTML += '<tr><td class="fw600 fs12" style="color:var(--white);">'+esc(s.name)+'</td>' +
+        '<td>'+pill(s.type==='deal'?'Deal':s.type==='portfolio'?'Portfolio':'Combined',c)+'</td>' +
+        '<td class="mono fs12 fw600" style="color:'+(s.nav?'var(--orange)':'var(--textDim)')+';">'+(s.nav||'—')+'</td>' +
+        '<td class="mono fs12 fw600" style="color:var(--orange);">'+s.sirr+'</td>' +
+        '<td class="mono fs12 fw600">'+s.smoic+'</td>' +
+        '<td class="mono fs12 fw600" style="color:var(--red);">'+s.irrDelta+'%</td></tr>';
+    });
+    comparisonHTML += '</tbody></table></div>';
+  }
+
+  return '<div class="fade-in">' +
+    '<div style="margin-bottom:20px;"><h1 style="font-size:22px;font-weight:700;color:var(--white);margin:0 0 6px;">Compare Scenarios</h1>' +
+    '<p class="fs12" style="color:var(--textDim);margin:0;">Select 2+ saved simulations for side-by-side comparison</p></div>' +
+    comparisonHTML +
+    '<div class="card" style="overflow:hidden;">' +
+    '<div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">' +
+    '<span class="fw600 fs12" style="color:var(--white);">Select Scenarios to Compare</span>' +
+    '<span class="fs11" style="color:var(--textDim);">'+selCount+' selected</span></div>' +
+    '<table><thead><tr><th style="width:40px;"></th><th>Simulation</th><th>Type</th><th>Scenario</th><th>NAV Impact</th><th>Stressed IRR</th><th>Stressed MOIC</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CANVAS CHARTS — Vanilla JS bar charts
+   ═══════════════════════════════════════════════════════════════════════ */
+function bindCharts(){
+  setTimeout(function(){
+    var deals = getSimDeals();
+    if(document.getElementById('chartIRR')){
+      drawBarChart('chartIRR',
+        deals.map(function(d){return d.name.split(' ')[0];}),
+        deals.map(function(d){return (d.baseIRR||0)*100;}),
+        deals.map(function(d){return ((d.simIRR!=null?d.simIRR:d.baseIRR)||0)*100;}),
+        '%','#14B8A6','#F59E0B');
+    }
+    if(document.getElementById('chartMOIC')){
+      drawBarChart('chartMOIC',
+        deals.map(function(d){return d.name.split(' ')[0];}),
+        deals.map(function(d){return d.baseMOIC||1;}),
+        deals.map(function(d){return d.simMOIC!=null?d.simMOIC:d.baseMOIC||1;}),
+        'x','#14B8A6','#F59E0B');
+    }
+    if(document.getElementById('chartNAV')){
+      drawBarChart('chartNAV',
+        deals.map(function(d){return d.name.split(' ')[0];}),
+        deals.map(function(d){return d.curNav/1e6;}),
+        deals.map(function(d){return d.strNav/1e6;}),
+        '$M','#14B8A6','#F59E0B');
+    }
+    // Compare charts
+    if(document.getElementById('compareIRR')){
+      var sel = savedSims.filter(function(s){return compareSelected[s.id];});
+      if(sel.length>=2){
+        var baseIRR = getFundMetrics().irr*100;
+        var labels=['Base'].concat(sel.map(function(s){return s.name.split(' ').slice(0,2).join(' ');}));
+        var vals=[baseIRR].concat(sel.map(function(s){return parseFloat(s.sirr);}));
+        var colors=['#14B8A6'].concat(sel.map(function(_,i){return ['#3B82F6','#F59E0B','#EF4444','#A78BFA','#22C55E'][i%5];}));
+        drawSingleBarChart('compareIRR',labels,vals,colors,'%');
+        var moicVals=[getFundMetrics().moic].concat(sel.map(function(s){return parseFloat(s.smoic);}));
+        drawSingleBarChart('compareMOIC',labels,moicVals,colors,'x');
+      }
+    }
+  },60);
+}
+
+function drawBarChart(id,labels,base,stress,suffix,c1,c2){
+  var canvas=document.getElementById(id);if(!canvas)return;
+  var ctx=canvas.getContext('2d');var W=canvas.parentElement.clientWidth-32;canvas.width=W;canvas.height=180;
+  var max=Math.max.apply(null,base.concat(stress))*1.15||1;var n=labels.length;
+  if(n===0) return;
+  var gap=W/(n*3+1);var bw=gap*1.2;
+  ctx.clearRect(0,0,W,180);
+  for(var i=0;i<n;i++){
+    var x=gap+(i*(bw*2+gap*1.5));
+    var h1=(base[i]/max)*140;var h2=(stress[i]/max)*140;
+    ctx.fillStyle=c1+'90';ctx.beginPath();ctx.roundRect(x,160-h1,bw,h1,3);ctx.fill();
+    ctx.fillStyle=c2+'90';ctx.beginPath();ctx.roundRect(x+bw+2,160-h2,bw,h2,3);ctx.fill();
+    if(h1>h2){ctx.fillStyle='#EF444430';ctx.fillRect(x+bw+2,160-h1,bw,h1-h2);}
+    ctx.fillStyle='#94A3B8';ctx.font='9px DM Sans';ctx.textAlign='center';ctx.fillText(labels[i],x+bw+1,175);
+    ctx.fillStyle=c1;ctx.font='bold 9px JetBrains Mono';ctx.fillText(base[i].toFixed(1)+suffix,x+bw/2,155-h1);
+    ctx.fillStyle=c2;ctx.fillText(stress[i].toFixed(1)+suffix,x+bw+2+bw/2,155-h2);
+  }
+  ctx.fillStyle=c1;ctx.fillRect(W-120,5,10,10);ctx.fillStyle='#94A3B8';ctx.font='10px DM Sans';ctx.textAlign='left';ctx.fillText('Base',W-106,14);
+  ctx.fillStyle=c2;ctx.fillRect(W-60,5,10,10);ctx.fillStyle='#94A3B8';ctx.fillText('Stressed',W-46,14);
+}
+
+function drawSingleBarChart(id,labels,vals,colors,suffix){
+  var canvas=document.getElementById(id);if(!canvas)return;
+  var ctx=canvas.getContext('2d');var W=canvas.parentElement.clientWidth-28;canvas.width=W;canvas.height=160;
+  var absMax=Math.max.apply(null,vals.map(Math.abs))*1.2||1;var n=labels.length;var bw=Math.min(40,W/(n*1.5));var gap=(W-n*bw)/(n+1);
+  ctx.clearRect(0,0,W,160);
+  var baseline=vals.some(function(v){return v<0;})?100:140;
+  for(var i=0;i<n;i++){
+    var x=gap+(i*(bw+gap));var h=Math.abs(vals[i]/absMax)*80;
+    ctx.fillStyle=colors[i]+'B0';
+    if(vals[i]>=0){ctx.beginPath();ctx.roundRect(x,baseline-h,bw,h,3);ctx.fill();}
+    else{ctx.beginPath();ctx.roundRect(x,baseline,bw,h,3);ctx.fill();}
+    ctx.fillStyle='#94A3B8';ctx.font='8px DM Sans';ctx.textAlign='center';
+    ctx.fillText(labels[i].substring(0,8),x+bw/2,vals[i]>=0?baseline+14:baseline+h+12);
+    ctx.fillStyle=colors[i];ctx.font='bold 9px JetBrains Mono';
+    ctx.fillText(vals[i].toFixed(1)+suffix,x+bw/2,vals[i]>=0?baseline-h-4:baseline+h+24);
+  }
+}
+</script>
+</body>
+</html>

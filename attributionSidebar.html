@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<!-- Office.js: required for Excel task-pane context -->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script type="module" src="../engine/bridge.js"></script>
+<style>
+body{font-family:"Segoe UI",Arial,sans-serif;padding:20px;background:#f8f9fa;font-size:13px}
+.card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.12);margin-bottom:15px}
+.header{font-size:16px;font-weight:600;margin-bottom:15px;color:#1a237e}
+.loading{color:#5f6368;text-align:center;padding:30px;font-size:13px}
+label{display:block;font-size:12px;font-weight:600;color:#5f6368;text-transform:uppercase;margin-bottom:6px}
+select{width:100%;padding:10px;margin-bottom:15px;border:1px solid #dadce0;border-radius:4px;font-size:13px}
+select[multiple]{height:120px}
+button{width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:4px;font-size:14px;cursor:pointer}
+button:hover:not(:disabled){background:#1557b0}
+button:disabled{background:#80868b;cursor:not-allowed}
+.err{color:#c0392b;font-size:12px;margin-top:8px;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">&#9783; 7-Bucket Attribution</div>
+  <div id="content"><div class="loading">Loading portfolio data&#8230;</div></div>
+</div>
+<script>
+// ── Async init — waits for bridge.js + builds UI from BUNDLE ─────────────────
+(async function() {
+  for (var _w = 0; _w < 100 && typeof window.IVP_INIT !== 'function'; _w++) {
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+
+  var content = document.getElementById('content');
+
+  if (typeof window.IVP_INIT !== 'function') {
+    content.innerHTML = '<div class="err" style="display:block">⚠️ IVP Engine not loaded. Check engine/bridge.js path.</div>';
+    return;
+  }
+
+  await window.IVP_INIT();
+  var BUNDLE = window.IVP_BUNDLE;
+
+  if (!BUNDLE || BUNDLE.error) {
+    content.innerHTML = '<div class="err" style="display:block">⚠️ ' + ((BUNDLE && BUNDLE.error) || 'Bundle not loaded.') + '</div>';
+    return;
+  }
+
+  // Derive L1 values and quarter labels from BUNDLE
+  var l1Label  = (BUNDLE.hierarchy && BUNDLE.hierarchy[0]) ? (BUNDLE.hierarchy[0].label || 'Entity') : 'Entity';
+  var l1vals   = BUNDLE.hierarchyValues && BUNDLE.hierarchyValues[1] ? BUNDLE.hierarchyValues[1] : [];
+  var qLabels  = (BUNDLE.quarters || []).map(function(q){ return (typeof q === 'string') ? q : (q.label || String(q)); });
+
+  // Build form HTML
+  var entOpts  = l1vals.map(function(v){ return '<option value="'+esc(v)+'">'+esc(v)+'</option>'; }).join('');
+  var qOpts    = qLabels.map(function(q){ return '<option value="'+esc(q)+'">'+esc(q)+'</option>'; }).join('');
+  var lastQVal = qLabels.length ? ' value="'+esc(qLabels[qLabels.length-1])+'"' : '';
+
+  content.innerHTML =
+    '<label>'+esc(l1Label)+'(s)</label>' +
+    '<select id="entities" multiple>' + entOpts + '</select>' +
+    '<label>Start Period</label>' +
+    '<select id="sp">' + qOpts + '</select>' +
+    '<label>End Period</label>' +
+    '<select id="ep"' + lastQVal + '>' + qOpts + '</select>' +
+    '<div id="errMsg" class="err"></div>' +
+    '<button id="btnCalc" onclick="calc()">Calculate Attribution</button>';
+
+  // Auto-select last quarter as end period
+  var epEl = document.getElementById('ep');
+  if (epEl && epEl.options.length > 0) epEl.selectedIndex = epEl.options.length - 1;
+})();
+
+function calc() {
+  var selEl = document.getElementById('entities');
+  if (!selEl) return;
+  var sel = Array.from(selEl.selectedOptions).map(function(o) { return o.value; });
+  if (sel.length === 0) { alert('Select at least one entity'); return; }
+
+  var btn = document.getElementById('btnCalc');
+  btn.disabled = true; btn.textContent = 'Calculating…';
+
+  google.script.run
+    .withSuccessHandler(function() {
+      btn.disabled = false; btn.textContent = 'Calculate Attribution';
+      // In Excel: close the task pane / dialog after success
+      if (typeof Office !== 'undefined' && Office.context && Office.context.ui) {
+        Office.context.ui.messageParent(JSON.stringify({type:'close'}));
+      }
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = 'Calculate Attribution';
+      alert(e.message);
+    })
+    .calculateAttribution({
+      entities:    sel,
+      startPeriod: document.getElementById('sp').value,
+      endPeriod:   document.getElementById('ep').value
+    });
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
