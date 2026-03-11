@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Office.js: required for Excel task-pane / dialog context -->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Google Sans","Segoe UI",Arial,sans-serif;background:#f0f2f5;color:#202124;font-size:13px}
+.top-bar{background:linear-gradient(135deg,#1a237e,#283593);padding:14px 24px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.top-bar h2{font-size:16px;font-weight:500}
+.kpi-strip{display:flex;gap:10px;padding:10px 24px;background:#fff;border-bottom:1px solid #d0d8e0;flex-wrap:wrap}
+.kpi{padding:6px 14px;border-radius:6px;background:#f4f6fa;font-size:11px;color:#5f6368}
+.kpi b{font-size:14px;color:#202124;display:block}
+.filter-bar{display:flex;gap:12px;padding:10px 24px;background:#fafbfc;border-bottom:1px solid #d0d8e0;flex-wrap:wrap;align-items:flex-end}
+.filter-group{position:relative}
+.filter-group label{display:block;font-size:10px;text-transform:uppercase;color:#5f6368;margin-bottom:3px;letter-spacing:.3px}
+.filter-btn{padding:6px 14px;border:1px solid #dadce0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;min-width:120px;text-align:left;position:relative}
+.filter-btn:hover{border-color:#1a73e8}
+.filter-btn.disabled{opacity:.5;cursor:not-allowed;background:#f4f6fa}
+.dropdown{position:absolute;top:100%;left:0;background:#fff;border:1px solid #dadce0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;min-width:200px;max-height:260px;overflow-y:auto;display:none;padding:6px 0}
+.dropdown.open{display:block}
+.dd-item{padding:6px 14px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px}
+.dd-item:hover{background:#e8f0fe}
+.dd-item input{margin:0}
+.dd-check{width:14px;height:14px}
+.rpt-toggle{display:flex;gap:0;border:1px solid #dadce0;border-radius:6px;overflow:hidden;align-self:flex-end}
+.rpt-opt{padding:6px 12px;border:none;background:#fff;cursor:pointer;font-size:11px;color:#5f6368}
+.rpt-opt.active{background:#1a73e8;color:#fff}
+.val-msg{font-size:10px;color:#c0392b;padding:2px 24px 4px;background:#fff;border-bottom:1px solid #d0d8e0;display:none;flex-shrink:0}
+.val-msg.show{display:block}
+.tab-bar{display:flex;gap:0;background:#fff;border-bottom:2px solid #d0d8e0}
+.tab{padding:10px 24px;cursor:pointer;font-size:12px;color:#5f6368;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:#1a73e8;border-bottom:2px solid #1a73e8;font-weight:500}
+.content{padding:12px 20px;overflow-y:auto;flex:1}
+.loading-msg{text-align:center;padding:40px;color:#5f6368}
+.cf-summary{display:flex;gap:16px;padding:12px 16px;background:#f4f6fa;border-radius:8px;margin-bottom:14px;flex-wrap:wrap;font-size:12px}
+.cf-summary b{color:#1a237e}
+.cf-section-hdr{padding:10px 14px;margin:16px 0 8px;background:#e3f2fd;border-left:4px solid #1565c0;border-radius:0 6px 6px 0;font-size:12px;font-weight:600;color:#1565c0;display:flex;align-items:center;gap:8px}
+.cf-section-hdr:first-of-type{margin-top:8px}
+.val-section-hdr{padding:10px 14px;margin:16px 0 8px;background:#fff8e1;border-left:4px solid #f9a825;border-radius:0 6px 6px 0;font-size:12px;font-weight:600;color:#e65100;display:flex;align-items:center;gap:8px}
+.cf-section-note{font-size:10px;font-weight:400;color:#5f6368;margin-left:8px}
+table.cf-table{width:100%;border-collapse:collapse;font-size:12px}
+.cf-table th{background:#366092;color:#fff;padding:7px 10px;text-align:left;font-weight:500;position:sticky;top:0}
+.cf-table td{padding:6px 10px;border-bottom:1px solid #e8eaed}
+.cf-row{}
+.val-row{background:#FFFDE7}
+.terminal-row{background:#E8F5E9;font-weight:500}
+.entity-header{background:#e8eaf6;padding:8px 12px;font-weight:500;color:#283593;margin-top:12px;border-radius:4px}
+.sp-container{display:flex;gap:20px;flex-wrap:wrap}
+.sp-table-wrap{flex:1.3;min-width:550px;overflow-x:auto}
+.sp-chart-wrap{flex:1;min-width:480px;min-height:420px}
+.sp-table{width:100%;border-collapse:collapse;font-size:12px}
+.sp-table th{background:#366092;color:#fff;padding:6px 10px;text-align:left}
+.sp-table td{padding:5px 10px;border-bottom:1px solid #e8eaed}
+.sp-selected{background:#E3F2FD !important;font-weight:500}
+.sp-entity-header{background:#e8eaf6;padding:6px 12px;font-weight:500;color:#283593;margin:12px 0 6px;border-radius:4px}
+.footer{font-size:10px;color:#999;text-align:center;padding:8px;background:#f4f6fa;border-top:1px solid #d0d8e0}
+
+/* ── Projected IRR Tab ─────────────────────────────────────────────────── */
+.proj-layout{display:flex;flex-direction:column;gap:14px}
+.proj-chart-card{background:#fff;border:1px solid #d0d8e0;border-radius:8px;padding:16px}
+.proj-card-title{font-size:12px;font-weight:600;color:#1a237e;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.proj-card-title .run-badge{font-size:10px;font-weight:400;background:#e8f0fe;color:#1a73e8;padding:2px 8px;border-radius:10px}
+.proj-chart-wrap{position:relative;height:320px}
+.proj-legend{display:flex;gap:20px;margin-top:10px;justify-content:center;flex-wrap:wrap}
+.proj-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#5f6368}
+.proj-legend-dot{width:24px;height:3px;border-radius:2px;display:inline-block}
+.proj-legend-dot.actual{background:#1a73e8}
+.proj-legend-dot.projected{background:repeating-linear-gradient(90deg,#e8710a 0,#e8710a 4px,transparent 4px,transparent 7px)}
+.proj-legend-dot.today{background:#c0392b}
+.proj-metrics-row{display:flex;gap:10px;flex-wrap:wrap}
+.proj-metric{flex:1;min-width:130px;background:#f4f6fa;border-radius:6px;padding:10px 14px}
+.proj-metric .pm-label{font-size:10px;color:#5f6368;text-transform:uppercase;letter-spacing:.3px}
+.proj-metric .pm-value{font-size:18px;font-weight:600;color:#202124;margin:3px 0 2px}
+.proj-metric .pm-sub{font-size:10px;color:#80868b}
+.proj-metric.up .pm-value{color:#0d652d}
+.proj-metric.neutral .pm-value{color:#1a73e8}
+.proj-metric.warn .pm-value{color:#e37400}
+.variance-table{width:100%;border-collapse:collapse;font-size:12px}
+.variance-table th{background:#366092;color:#fff;padding:7px 10px;text-align:left;font-weight:500}
+.variance-table td{padding:6px 10px;border-bottom:1px solid #e8eaed}
+.variance-table tr:hover td{background:#f8f9fa}
+.v-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.v-badge.AHEAD{background:#e6f4ea;color:#137333}
+.v-badge.BEHIND{background:#fce8e6;color:#c5221f}
+.v-badge.ON_TRACK{background:#e8f0fe;color:#1a73e8}
+.proj-no-data{text-align:center;padding:48px 24px;color:#5f6368;font-size:13px;line-height:1.8}
+.proj-error{background:#fce8e6;border-radius:6px;padding:12px 16px;color:#c5221f;font-size:12px;margin-bottom:12px}
+.alloc-table{width:100%;border-collapse:collapse;font-size:11px}
+.alloc-table th{background:#7b1fa2;color:#fff;padding:6px 10px;text-align:left;font-weight:500}
+.alloc-table td{padding:5px 10px;border-bottom:1px solid #f3e5f5}
+.alloc-tag{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600}
+.alloc-tag.direct{background:#e8f5e9;color:#1b5e20}
+.alloc-tag.allocated{background:#fff3e0;color:#e65100}
+.variance-summary-bar{display:flex;gap:10px;padding:10px 0 14px;flex-wrap:wrap}
+.vsb-item{flex:1;min-width:100px;text-align:center;background:#f4f6fa;border-radius:6px;padding:8px 10px}
+.vsb-item .vsb-n{font-size:20px;font-weight:600;color:#202124}
+.vsb-item .vsb-l{font-size:10px;color:#5f6368;text-transform:uppercase;margin-top:2px}
+.vsb-item.ahead .vsb-n{color:#0d652d}
+.vsb-item.behind .vsb-n{color:#c5221f}
+.vsb-item.ontrack .vsb-n{color:#1a73e8}
+.collapsible-toggle{font-size:11px;color:#1a73e8;cursor:pointer;margin-left:auto;font-weight:400;white-space:nowrap}
+.alloc-section-hdr{padding:10px 14px;margin:0 0 10px;background:#f3e5f5;border-left:4px solid #6a1b9a;
+  border-radius:0 6px 6px 0;font-size:12px;font-weight:600;color:#4a148c;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div style="display:flex;flex-direction:column;height:100vh">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <h2>&#x1F4CA; IRR Analytics Dashboard</h2>
+    <span id="topBarInfo" style="font-size:11px;opacity:.8"></span>
+  </div>
+
+  <!-- KPI strip -->
+  <div class="kpi-strip" id="kpiStrip"></div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filterBar"></div>
+
+  <!-- Validation message -->
+  <div class="val-msg" id="valMsg"></div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab active" id="tab-cashflows" onclick="switchTab('cashflows')">&#x1F4CB; Cashflow Details</div>
+    <div class="tab" id="tab-subperiod" onclick="switchTab('subperiod')">&#x1F4C8; IRR Sub-period</div>
+    <div class="tab" id="tab-projected" onclick="switchTab('projected')">&#x1F52E; Projected IRR</div>
+  </div>
+
+  <!-- Content area -->
+  <div class="content" id="contentArea"><div class="loading-msg">Select filters and click Apply</div></div>
+
+  <!-- Footer -->
+  <div class="footer">IRR Engine v2.0 — Inception-to-date analysis · Auto-detected quarters · N-level hierarchy</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  DATA — injected server-side via template scriptlet
+// ═══════════════════════════════════════════════════════════════
+// ── Excel Add-in: values populated by IVP_INIT() from engine/bridge.js ──
+// (Replaces <?!= bundle ?> / <?= ?> Google Apps Script template injection)
+var BUNDLE      = null;
+var PRESELECT   = {};
+var DEFAULT_TAB = 'cashflows';
+var MAX_LEVEL   = 0;
+var PATH_SEP    = ' > ';
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+var currentTab      = DEFAULT_TAB;
+var reportingLevel  = 1;
+var selectedQuarter = null;
+var levelSelections = {};
+var spChart         = null;
+var projChart       = null;
+var projEntityCache = {};   // pathStr → bundle, cleared on filter change
+var PALETTE = ['#1a73e8','#e8710a','#0d652d','#a142f4','#e52592','#1a8a7d','#d93025'];
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+async function init() {
+  // ── Wait for bridge.js ES-module to register window.IVP_INIT (max 5s) ──
+  for (var _w = 0; _w < 100 && typeof window.IVP_INIT !== 'function'; _w++) {
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+  if (typeof window.IVP_INIT !== 'function') {
+    document.getElementById('contentArea').innerHTML =
+      '<div class="loading-msg" style="color:#c5221f">'
+      + '⚠️ IVP Engine not loaded. Check engine/bridge.js path and reload.</div>';
+    return;
+  }
+
+  // ── Load bundle (reads Config_Library + builds hierarchy from workbook) ─
+  await window.IVP_INIT();
+  BUNDLE = window.IVP_BUNDLE;
+
+  if (!BUNDLE || BUNDLE.error) {
+    document.getElementById('contentArea').innerHTML =
+      '<div class="loading-msg" style="color:#c5221f">⚠️ '
+      + (BUNDLE && BUNDLE.error ? BUNDLE.error : 'Bundle not loaded. Open Config Library and save a config first.')
+      + '</div>';
+    return;
+  }
+
+  MAX_LEVEL  = BUNDLE.maxLevel;
+  PATH_SEP   = BUNDLE.pathSep;
+  currentTab = DEFAULT_TAB;
+  // ─────────────────────────────────────────────────────────────────────────
+  document.getElementById('topBarInfo').textContent =
+    'Inception-to-date \u00B7 ' + BUNDLE.txnCount + ' records (' +
+    BUNDLE.cfCount + ' CF + ' + BUNDLE.valCount + ' Val) \u00B7 ' +
+    BUNDLE.quarters.length + ' quarters';
+
+  buildFilterBar();
+
+  for (var i = 1; i <= MAX_LEVEL; i++) {
+    levelSelections[i] = [];
+    buildLevelDropdown(i);
+  }
+  buildQuarterDropdown();
+
+  if (BUNDLE.quarters.length > 0) {
+    selectedQuarter = BUNDLE.quarters[BUNDLE.quarters.length - 1];
+    document.getElementById('lbl-quarter').textContent = selectedQuarter;
+  }
+
+  if (PRESELECT && PRESELECT.level1) {
+    levelSelections[1] = [PRESELECT.level1];
+    updateLevelLabel(1);
+  }
+
+  switchTab(DEFAULT_TAB);
+  updateKPI();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BUILD FILTER BAR (dynamic from hierarchy config)
+// ═══════════════════════════════════════════════════════════════
+function buildFilterBar() {
+  var bar = document.getElementById('filterBar');
+  var h = BUNDLE.hierarchy;
+  var html = '';
+
+  html += '<div class="filter-group"><label>Reporting Level</label><div class="rpt-toggle" id="rptToggle">';
+  for (var rl = 1; rl <= MAX_LEVEL; rl++) {
+    html += '<button class="rpt-opt' + (rl === 1 ? ' active' : '') + '" data-level="' + rl +
+            '" onclick="setReportingLevel(' + rl + ')">Through ' + h[rl - 1].label + '</button>';
+  }
+  html += '</div></div>';
+
+  for (var li = 0; li < MAX_LEVEL; li++) {
+    var lvl = h[li].level;
+    html += '<div class="filter-group" id="fg-level-' + lvl + '">' +
+      '<label>' + h[li].label + '</label>' +
+      '<div class="filter-btn" id="btn-level-' + lvl + '" onclick="toggleDD(' + lvl + ')">' +
+        '<span id="lbl-level-' + lvl + '">All</span> &#x25BE;' +
+      '</div>' +
+      '<div class="dropdown" id="dd-level-' + lvl + '"></div>' +
+    '</div>';
+  }
+
+  html += '<div class="filter-group"><label>Quarter (end date)</label>' +
+    '<div class="filter-btn" id="btn-quarter" onclick="toggleDD(\'q\')">' +
+      '<span id="lbl-quarter">Select</span> &#x25BE;' +
+    '</div>' +
+    '<div class="dropdown" id="dd-quarter"></div></div>';
+
+  html += '<button style="padding:6px 18px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;align-self:flex-end" onclick="applyFilters()">Apply</button>';
+
+  bar.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DROPDOWN LOGIC
+// ═══════════════════════════════════════════════════════════════
+function buildLevelDropdown(lvl) {
+  var dd = document.getElementById('dd-level-' + lvl);
+  dd.innerHTML = '';
+  var items = getAvailableValues(lvl);
+  items.forEach(function(v) {
+    var d = document.createElement('div'); d.className = 'dd-item';
+    d.innerHTML = '<input type="checkbox" class="dd-check" value="' + v + '" onchange="onLevelCheck(' + lvl + ',this)"> ' + v;
+    dd.appendChild(d);
+  });
+}
+
+function getAvailableValues(lvl) {
+  if (lvl === 1) return BUNDLE.hierarchyValues[1] || [];
+  var parentParts = [];
+  for (var pl = 1; pl < lvl; pl++) {
+    parentParts.push(levelSelections[pl].length > 0 ? levelSelections[pl] : (BUNDLE.hierarchyValues[pl] || []));
+  }
+  var children = {};
+  var combos = cartesian(parentParts);
+  combos.forEach(function(combo) {
+    var pk = combo.join(PATH_SEP);
+    var map = BUNDLE.cascading[lvl] || {};
+    (map[pk] || []).forEach(function(v) { children[v] = true; });
+  });
+  return Object.keys(children).sort();
+}
+
+function cartesian(arrays) {
+  if (arrays.length === 0) return [[]];
+  var first = arrays[0], rest = cartesian(arrays.slice(1)), result = [];
+  first.forEach(function(v) { rest.forEach(function(r) { result.push([v].concat(r)); }); });
+  return result;
+}
+
+function onLevelCheck(lvl, cb) {
+  if (cb.checked) { if (levelSelections[lvl].indexOf(cb.value) === -1) levelSelections[lvl].push(cb.value); }
+  else { levelSelections[lvl] = levelSelections[lvl].filter(function(v) { return v !== cb.value; }); }
+  updateLevelLabel(lvl);
+  for (var cl = lvl + 1; cl <= MAX_LEVEL; cl++) { levelSelections[cl] = []; buildLevelDropdown(cl); updateLevelLabel(cl); }
+  projEntityCache = {};  // invalidate cache when filters change
+}
+
+function updateLevelLabel(lvl) {
+  var sel = levelSelections[lvl];
+  var lbl = document.getElementById('lbl-level-' + lvl);
+  if (sel.length === 0) lbl.textContent = 'All';
+  else if (sel.length === 1) lbl.textContent = sel[0];
+  else lbl.textContent = sel.length + ' selected';
+}
+
+function setReportingLevel(lvl) {
+  reportingLevel = lvl;
+  document.querySelectorAll('.rpt-opt').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.getAttribute('data-level')) === lvl);
+  });
+  for (var i = 1; i <= MAX_LEVEL; i++) {
+    var fg = document.getElementById('fg-level-' + i);
+    var btn = document.getElementById('btn-level-' + i);
+    if (i > lvl) { fg.style.opacity = '.4'; btn.classList.add('disabled'); }
+    else { fg.style.opacity = '1'; btn.classList.remove('disabled'); }
+  }
+  projEntityCache = {};  // invalidate cache when level changes
+}
+
+function buildQuarterDropdown() {
+  var dd = document.getElementById('dd-quarter'); dd.innerHTML = '';
+  BUNDLE.quarters.forEach(function(q) {
+    var d = document.createElement('div'); d.className = 'dd-item';
+    d.innerHTML = '<input type="radio" name="qtr" value="' + q + '" onchange="onQuarterChange(this.value)"> ' + q;
+    dd.appendChild(d);
+  });
+}
+
+function onQuarterChange(v) { selectedQuarter = v; document.getElementById('lbl-quarter').textContent = v; closeAllDD(); }
+
+function toggleDD(id) {
+  if (typeof id === 'number') { var btn = document.getElementById('btn-level-' + id); if (btn.classList.contains('disabled')) return; }
+  var ddId = (id === 'q') ? 'dd-quarter' : 'dd-level-' + id;
+  var dd = document.getElementById(ddId);
+  var isOpen = dd.classList.contains('open');
+  closeAllDD();
+  if (!isOpen) dd.classList.add('open');
+}
+
+function closeAllDD() { document.querySelectorAll('.dropdown').forEach(function(d) { d.classList.remove('open'); }); }
+document.addEventListener('click', function(e) { if (!e.target.closest('.filter-group')) closeAllDD(); });
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTERS & TABS
+// ═══════════════════════════════════════════════════════════════
+function validate() {
+  var msg = document.getElementById('valMsg'); msg.className = 'val-msg'; msg.textContent = '';
+  if (!selectedQuarter) { msg.textContent = '\u26A0 Please select a quarter.'; msg.className = 'val-msg show'; return false; }
+  return true;
+}
+
+function applyFilters() {
+  if (!validate()) return;
+  var entities = buildEntityList();
+  if (entities.length === 0) {
+    document.getElementById('valMsg').textContent = '\u26A0 No entities match current filters.';
+    document.getElementById('valMsg').className = 'val-msg show'; return;
+  }
+  updateKPI();
+  if      (currentTab === 'cashflows')  loadCashflowDetails(entities);
+  else if (currentTab === 'subperiod')  loadSubPeriodData(entities);
+  else if (currentTab === 'projected')  loadProjectedIRR(entities);
+}
+
+function buildEntityList() {
+  var levelArrays = [];
+  for (var l = 1; l <= reportingLevel; l++) {
+    var sel = levelSelections[l];
+    levelArrays.push(sel.length > 0 ? sel : getAvailableValues(l));
+  }
+  var combos = cartesian(levelArrays);
+  return combos.map(function(combo) {
+    return { path: combo, pathStr: combo.join(PATH_SEP), label: combo[combo.length - 1] };
+  });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab-' + tab).classList.add('active');
+  // Destroy charts when leaving their tabs to free canvas
+  if (tab !== 'projected' && projChart) { projChart.destroy(); projChart = null; }
+  if (tab !== 'subperiod' && spChart)   { spChart.destroy();   spChart   = null; }
+  document.getElementById('contentArea').innerHTML = '<div class="loading-msg">Select filters and click Apply</div>';
+}
+
+function updateKPI() {
+  var strip = document.getElementById('kpiStrip');
+  var ents = buildEntityList();
+  strip.innerHTML =
+    '<div class="kpi">Entities<b>' + ents.length + '</b></div>' +
+    '<div class="kpi">Records<b>' + BUNDLE.txnCount + '</b></div>' +
+    '<div class="kpi">Cashflows<b>' + BUNDLE.cfCount + '</b></div>' +
+    '<div class="kpi">Valuations<b>' + BUNDLE.valCount + '</b></div>' +
+    '<div class="kpi">Quarters<b>' + BUNDLE.quarters.length + '</b></div>' +
+    '<div class="kpi">Reporting Level<b>' + reportingLevel + '</b></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CASHFLOW DETAILS TAB
+// ═══════════════════════════════════════════════════════════════
+function loadCashflowDetails(entities) {
+  var area = document.getElementById('contentArea');
+  area.innerHTML = '<div class="loading-msg">Loading cashflow details\u2026</div>';
+  var results = [], done = 0;
+  entities.forEach(function(ent, idx) {
+    google.script.run
+      .withSuccessHandler(function(data) { results[idx] = { entity: ent, data: data }; done++; if (done === entities.length) renderCashflowDetails(results); })
+      .withFailureHandler(function(e) { results[idx] = { entity: ent, data: { irr: null, nav: 0, rows: [] } }; done++; if (done === entities.length) renderCashflowDetails(results); })
+      .getAnalyticsAllTransactions(ent.pathStr, selectedQuarter);
+  });
+}
+
+function renderCashflowDetails(results) {
+  var area = document.getElementById('contentArea'), html = '';
+  results.forEach(function(r) {
+    if (!r || !r.data) return;
+    var d = r.data, ent = r.entity;
+    var cfRows = d.rows.filter(function(x) { return x.isCashflow && !x.isTerminal; });
+    var termRow = d.rows.filter(function(x) { return x.isTerminal; });
+
+    html += '<div class="entity-header">' + ent.pathStr + '</div>';
+    html += '<div class="cf-summary">';
+    html += '<span>Period: <b>Inception \u2192 ' + selectedQuarter + '</b></span>';
+    if (d.irr !== null) html += '<span>Net IRR (ITD): <b>' + (d.irr * 100).toFixed(2) + '%</b></span>';
+    html += '<span>Cashflows: <b>' + cfRows.length + '</b></span>';
+    if (d.invested) html += '<span>Total Invested: <b>$' + Math.abs(d.invested).toLocaleString() + '</b></span>';
+    if (d.distributed) html += '<span>Distributed: <b>$' + Math.abs(d.distributed).toLocaleString() + '</b></span>';
+    if (d.terminalNAV !== null) html += '<span>Terminal NAV: <b>$' + Math.abs(d.terminalNAV).toLocaleString() + '</b></span>';
+    if (d.moic) html += '<span>MOIC: <b>' + d.moic.toFixed(2) + 'x</b></span>';
+    html += '</div>';
+
+    html += '<div class="cf-section-hdr">\u{1F4CB} Actual Cashflows \u2014 Inception to ' + selectedQuarter +
+            '<span class="cf-section-note">Capital calls, distributions, fees \u2014 used in XIRR calculation</span></div>';
+    if (cfRows.length > 0) {
+      html += '<table class="cf-table"><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Entity</th><th style="text-align:right">Amount</th><th>Bucket</th><th>Quarter</th><th>Sign</th></tr></thead><tbody>';
+      var totalOut = 0, totalIn = 0;
+      cfRows.forEach(function(row, i) {
+        var amtColor = row.amount < 0 ? '#c0392b' : '#27ae60';
+        var amtPrefix = row.amount < 0 ? '-$' : '$';
+        if (row.amount < 0) totalOut += row.amount; else totalIn += row.amount;
+        html += '<tr class="cf-row"><td style="color:#999;font-size:10px">' + (i + 1) + '</td><td>' + row.date + '</td><td>' + (row.txnType || row.type || '') + '</td><td style="font-size:10px;color:#666">' + (row.entity || ent.pathStr) + '</td>';
+        html += '<td style="text-align:right;color:' + amtColor + '">' + amtPrefix + Math.abs(row.amount).toLocaleString() + '</td>';
+        html += '<td>' + row.bucket + '</td><td>' + row.quarter + '</td><td><span style="color:#1565c0;font-size:10px">CF</span></td></tr>';
+      });
+      html += '<tr style="background:#e8eaf6;font-weight:600;border-top:2px solid #5c6bc0"><td colspan="4" style="text-align:right;color:#283593">TOTAL CASHFLOWS</td>';
+      html += '<td style="text-align:right;font-size:11px"><span style="color:#c0392b">Out: -$' + Math.abs(totalOut).toLocaleString() + '</span> &nbsp; <span style="color:#27ae60">In: $' + totalIn.toLocaleString() + '</span></td>';
+      html += '<td colspan="3"></td></tr></tbody></table>';
+    } else {
+      html += '<div style="padding:12px;color:#999;font-style:italic">No actual cashflows found for this period.</div>';
+    }
+
+    html += '<div class="val-section-hdr">\u{1F4CA} Terminal Valuation \u2014 as of ' + selectedQuarter +
+            '<span class="cf-section-note">Most recent NAV used as final positive cashflow in XIRR</span></div>';
+    if (termRow.length > 0) {
+      html += '<table class="cf-table"><thead><tr><th>Date</th><th>Type</th><th>Entity</th><th style="text-align:right">NAV Amount</th><th>Usage</th></tr></thead><tbody>';
+      termRow.forEach(function(row) {
+        html += '<tr class="terminal-row"><td>' + row.date + '</td><td>' + (row.txnType || row.type || '') + '</td><td style="font-size:10px;color:#666">' + (row.entity || ent.pathStr) + '</td>';
+        html += '<td style="text-align:right;color:#1b5e20;font-weight:600">$' + Math.abs(row.amount).toLocaleString() + '</td>';
+        html += '<td><span style="background:#e8f5e9;color:#1b5e20;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:600">TERMINAL VALUE IN XIRR</span></td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<div style="padding:12px;color:#e65100;font-style:italic">\u26A0\uFE0F No terminal valuation found \u2014 XIRR may be incomplete.</div>';
+    }
+    html += '<br>';
+  });
+  area.innerHTML = html || '<div class="loading-msg">No data found for selected filters.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  IRR SUB-PERIOD TAB
+// ═══════════════════════════════════════════════════════════════
+function loadSubPeriodData(entities) {
+  var area = document.getElementById('contentArea');
+  area.innerHTML = '<div class="loading-msg">Loading sub-period data\u2026</div>';
+  var results = [], done = 0;
+  entities.forEach(function(ent, idx) {
+    google.script.run
+      .withSuccessHandler(function(data) { results[idx] = { entity: ent, data: data }; done++; if (done === entities.length) renderSubPeriod(results); })
+      .withFailureHandler(function(e) { results[idx] = { entity: ent, data: [] }; done++; if (done === entities.length) renderSubPeriod(results); })
+      .getAnalyticsSubPeriodTrend(ent.pathStr, selectedQuarter);
+  });
+}
+
+function renderSubPeriod(results) {
+  var area = document.getElementById('contentArea'), html = '';
+  html += '<div class="sp-container"><div class="sp-table-wrap">';
+  results.forEach(function(r) {
+    if (!r || !r.data || r.data.length === 0) return;
+    html += '<div class="sp-entity-header">' + r.entity.pathStr + ' \u2014 Inception to ' + selectedQuarter + '</div>';
+    html += '<table class="sp-table"><thead><tr><th>Quarter</th><th>Net IRR (ITD)</th><th>Sub-Period IRR</th><th>Phase</th><th>Total Invested</th><th>Total Distributed</th><th>NAV</th><th>MOIC</th></tr></thead><tbody>';
+    r.data.forEach(function(row) {
+      var sel = row.quarter === selectedQuarter ? ' sp-selected' : '';
+      var arrow = row.quarter === selectedQuarter ? ' \u25C0' : '';
+      html += '<tr class="' + sel + '"><td>' + row.quarter + arrow + '</td>';
+      var _nIRR = row.netIRR != null ? row.netIRR : 0;
+      var _sIRR = row.subIRR != null ? row.subIRR : 0;
+      html += '<td>' + (_nIRR * 100).toFixed(2) + '%</td>';
+      html += '<td>' + (_sIRR * 100).toFixed(2) + '%</td>';
+      html += '<td>' + (row.phase || '—') + '</td>';
+      html += '<td>$' + Math.round(row.invested).toLocaleString() + '</td>';
+      html += '<td>$' + Math.round(row.distributed).toLocaleString() + '</td>';
+      html += '<td>$' + Math.round(row.nav).toLocaleString() + '</td>';
+      html += '<td>' + (row.moic != null ? row.moic.toFixed(2) : '—') + 'x</td></tr>';
+    });
+    html += '</tbody></table>';
+  });
+  html += '</div>';
+  html += '<div class="sp-chart-wrap"><canvas id="spCanvas"></canvas></div>';
+  html += '</div>';
+  area.innerHTML = html;
+  renderSubPeriodChart(results);
+}
+
+function renderSubPeriodChart(results) {
+  var canvas = document.getElementById('spCanvas');
+  if (!canvas || results.length === 0) return;
+  if (spChart) { spChart.destroy(); spChart = null; }
+
+  var labels = [];
+  results.forEach(function(r) {
+    if (r.data && r.data.length > labels.length) labels = r.data.map(function(d) { return d.quarter; });
+  });
+
+  var datasets = [];
+  results.forEach(function(r, idx) {
+    if (!r.data) return;
+    var c = PALETTE[idx % PALETTE.length];
+    datasets.push({
+      type: 'line', label: r.entity.label + ' Net IRR', borderColor: c, backgroundColor: c + '20',
+      data: r.data.map(function(d) { var n = d.netIRR != null ? d.netIRR : 0; return (n * 100).toFixed(2); }), yAxisID: 'y', tension: 0.3, pointRadius: 3
+    });
+    var barColors = r.data.map(function(d) {
+      var s = d.subIRR != null ? d.subIRR : 0;
+      if (s > 0.05) return '#27ae60';
+      if (s > 0) return '#f39c12';
+      return '#e74c3c';
+    });
+    datasets.push({
+      type: 'bar', label: r.entity.label + ' Sub IRR', backgroundColor: barColors,
+      data: r.data.map(function(d) { var s = d.subIRR != null ? d.subIRR : 0; return (s * 100).toFixed(2); }), yAxisID: 'y', barPercentage: 0.5
+    });
+  });
+
+  spChart = new Chart(canvas, {
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+      scales: { y: { title: { display: true, text: 'IRR %' }, ticks: { callback: function(v) { return v + '%'; } } } }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PROJECTED IRR TAB
+// ═══════════════════════════════════════════════════════════════
+function loadProjectedIRR(entities) {
+  var area = document.getElementById('contentArea');
+  area.innerHTML = '<div class="loading-msg">Loading projected IRR data\u2026</div>';
+  if (projChart) { projChart.destroy(); projChart = null; }
+
+  // Render only the first entity (use precise entity filter for multi-entity drill-down)
+  var ent = entities[0];
+  if (!ent) {
+    area.innerHTML = '<div class="proj-no-data">No entities selected. Apply a filter and click Apply.</div>';
+    return;
+  }
+
+  // Use session cache to avoid re-fetching on repeated Apply
+  if (projEntityCache[ent.pathStr]) {
+    renderProjectedIRR(ent, projEntityCache[ent.pathStr]);
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(bundle) {
+      projEntityCache[ent.pathStr] = bundle;
+      renderProjectedIRR(ent, bundle);
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('contentArea').innerHTML =
+        '<div class="proj-error">\u26A0\uFE0F Failed to load projected data: ' + e.message + '</div>';
+    })
+    .getProjectedIRRBundle(ent.pathStr);
+}
+
+function renderProjectedIRR(ent, b) {
+  var area = document.getElementById('contentArea');
+
+  if (!b || !b.ok) {
+    area.innerHTML = '<div class="proj-error">\u26A0\uFE0F ' + (b && b.error ? b.error : 'Unknown error loading projected data.') + '</div>';
+    return;
+  }
+
+  if (!b.projectedSeries || b.projectedSeries.length === 0) {
+    area.innerHTML =
+      '<div class="proj-no-data">' +
+      '<div style="font-size:32px;margin-bottom:12px">&#x1F4C5;</div>' +
+      '<b>No projected data found</b><br><br>' +
+      'Upload projected cashflows to <b>Projected_CF</b> and valuations to <b>Projected_Val</b>.<br>' +
+      'Then use the <b>Projected IRR</b> module in the task pane to compute &amp; snapshot.' +
+      '</div>';
+    return;
+  }
+
+  var runDateLabel = b.runDate ? 'Projection run: ' + b.runDate : '';
+  var vs  = b.varianceSummary || {};
+
+  // Derive summary metrics
+  var lastActual    = b.actualSeries    && b.actualSeries.length    > 0 ? b.actualSeries[b.actualSeries.length - 1]       : null;
+  var lastProjected = b.projectedSeries && b.projectedSeries.length > 0 ? b.projectedSeries[b.projectedSeries.length - 1] : null;
+  var actualIRR    = lastActual    ? lastActual.irrPct    : null;
+  var projectedIRR = lastProjected ? lastProjected.irrPct : null;
+  var uplift       = (actualIRR !== null && projectedIRR !== null) ? (projectedIRR - actualIRR) : null;
+
+  var html = '<div class="proj-layout">';
+
+  // Error / warning strip
+  if (b.errors && b.errors.length > 0) {
+    html += '<div class="proj-error">\u26A0\uFE0F ' + b.errors.join('<br>') + '</div>';
+  }
+
+  // ── KPI metric row ──────────────────────────────────────────
+  html += '<div class="proj-metrics-row">';
+  html += _projMetric('Current IRR (Actual)',
+            actualIRR !== null ? actualIRR.toFixed(2) + '%' : '\u2014',
+            lastActual ? lastActual.quarter : '\u2014', 'neutral');
+  html += _projMetric('Projected IRR (Exit)',
+            projectedIRR !== null ? projectedIRR.toFixed(2) + '%' : '\u2014',
+            lastProjected ? lastProjected.quarter : 'Projected exit',
+            projectedIRR !== null && actualIRR !== null ? (projectedIRR >= actualIRR ? 'up' : 'warn') : 'neutral');
+  html += _projMetric('Expected Uplift',
+            uplift !== null ? (uplift >= 0 ? '+' : '') + uplift.toFixed(2) + '%' : '\u2014',
+            'vs current IRR', uplift !== null ? (uplift >= 0 ? 'up' : 'warn') : 'neutral');
+  html += _projMetric('Projected MOIC',
+            lastProjected && lastProjected.moic ? lastProjected.moic.toFixed(2) + 'x' : '\u2014',
+            'at projected exit', 'neutral');
+  html += _projMetric('Avg Historical Variance',
+            vs.avgVarianceBps !== undefined ? (vs.avgVarianceBps >= 0 ? '+' : '') + vs.avgVarianceBps + ' bps' : '\u2014',
+            'actual vs projected-at-time', vs.avgVarianceBps !== undefined ? (vs.avgVarianceBps >= 0 ? 'up' : 'warn') : 'neutral');
+  html += '</div>';
+
+  // ── Chart card ──────────────────────────────────────────────
+  html += '<div class="proj-chart-card">';
+  html += '<div class="proj-card-title">Actual vs Projected IRR \u2014 ' + ent.pathStr;
+  if (runDateLabel) html += '<span class="run-badge">' + runDateLabel + '</span>';
+  html += '</div>';
+  html += '<div class="proj-chart-wrap"><canvas id="projCanvas"></canvas></div>';
+  html += '<div class="proj-legend">';
+  html += '<div class="proj-legend-item"><div class="proj-legend-dot actual"></div>Actual IRR (Inception-to-date)</div>';
+  html += '<div class="proj-legend-item"><div class="proj-legend-dot projected"></div>Projected IRR (forward-looking)</div>';
+  html += '<div class="proj-legend-item"><div class="proj-legend-dot today"></div>Today</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── Variance / Reconciliation card ──────────────────────────
+  html += '<div class="proj-chart-card">';
+  html += '<div class="proj-card-title">Historical Variance \u2014 Actual vs Projected-at-the-Time' +
+          '<span class="collapsible-toggle" onclick="toggleSection(\'var-body\')">&#x25BE; collapse</span></div>';
+  html += '<div id="var-body">';
+
+  if (b.varianceRows && b.varianceRows.length > 0) {
+    html += '<div class="variance-summary-bar">';
+    html += '<div class="vsb-item ahead"><div class="vsb-n">'   + (vs.periodsAhead   || 0) + '</div><div class="vsb-l">Periods Ahead</div></div>';
+    html += '<div class="vsb-item behind"><div class="vsb-n">'  + (vs.periodsBehind  || 0) + '</div><div class="vsb-l">Periods Behind</div></div>';
+    html += '<div class="vsb-item ontrack"><div class="vsb-n">' + (vs.periodsOnTrack || 0) + '</div><div class="vsb-l">On Track (\xB125bps)</div></div>';
+    html += '<div class="vsb-item"><div class="vsb-n">' + (vs.avgVarianceBps >= 0 ? '+' : '') + (vs.avgVarianceBps || 0) + ' bps</div><div class="vsb-l">Avg Variance</div></div>';
+    html += '</div>';
+
+    html += '<table class="variance-table"><thead><tr>' +
+      '<th>Quarter</th><th>Actual IRR</th><th>Projected IRR (at time)</th>' +
+      '<th>Variance (bps)</th><th>Variance (%)</th><th>Status</th><th>Projection Run</th>' +
+      '</tr></thead><tbody>';
+
+    b.varianceRows.forEach(function(row) {
+      var varColor = row.varianceBps >= 0 ? '#0d652d' : '#c5221f';
+      var varSign  = row.varianceBps >= 0 ? '+' : '';
+      html += '<tr>';
+      html += '<td style="font-weight:500">' + row.quarter + '</td>';
+      html += '<td>' + row.actualIRR.toFixed(2) + '%</td>';
+      html += '<td>' + row.projectedIRR.toFixed(2) + '%</td>';
+      html += '<td style="color:' + varColor + ';font-weight:600">' + varSign + row.varianceBps + ' bps</td>';
+      html += '<td style="color:' + varColor + '">' + varSign + row.variancePct.toFixed(2) + '%</td>';
+      html += '<td><span class="v-badge ' + row.status + '">' + row.status.replace('_', ' ') + '</span></td>';
+      html += '<td style="color:#80868b;font-size:11px">' + row.runDate + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div style="padding:20px;color:#5f6368;font-style:italic;font-size:12px">' +
+      'No historical variance data yet. Variance builds up over multiple quarters as you run and save projections via ' +
+      '<b>Projection \u2192 Compute &amp; Snapshot</b>.' +
+      '</div>';
+  }
+  html += '</div></div>'; // close var-body + card
+
+  // ── Allocation Audit card (only when allocations exist) ─────
+  if (b.allocationAudit && b.allocationAudit.length > 0) {
+    html += '<div class="proj-chart-card">';
+    html += '<div class="alloc-section-hdr">&#x2696;&#xFE0F; Allocation Audit \u2014 How Fund-Level Projections Were Split to Deals' +
+            '<span class="collapsible-toggle" onclick="toggleSection(\'alloc-body\')">&#x25BE; collapse</span></div>';
+    html += '<div id="alloc-body">';
+    html += '<table class="alloc-table"><thead><tr>' +
+      '<th>Entity</th><th>Date</th><th>Type</th><th>Source</th><th>Basis</th><th>Weight</th><th style="text-align:right">Amount</th>' +
+      '</tr></thead><tbody>';
+    b.allocationAudit.forEach(function(row) {
+      var amtColor = row.amount >= 0 ? '#27ae60' : '#c0392b';
+      var amtPfx   = row.amount >= 0 ? '+$' : '-$';
+      html += '<tr>';
+      html += '<td style="font-size:11px">' + row.entity + '</td>';
+      html += '<td>' + row.date + '</td>';
+      html += '<td>' + row.txnType + '</td>';
+      html += '<td style="font-size:10px;color:#5f6368">' + row.source + '</td>';
+      html += '<td><span class="alloc-tag allocated">' + (row.basis || 'NAV') + '</span></td>';
+      html += '<td>' + row.weight + '</td>';
+      html += '<td style="text-align:right;color:' + amtColor + '">' + amtPfx + Math.abs(row.amount).toLocaleString() + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '</div></div>'; // close alloc-body + card
+  }
+
+  html += '</div>'; // close proj-layout
+  area.innerHTML = html;
+
+  // Draw chart after DOM is ready
+  _renderProjChart(b.actualSeries, b.projectedSeries);
+}
+
+// ── Chart renderer ────────────────────────────────────────────
+function _renderProjChart(actualSeries, projectedSeries) {
+  var canvas = document.getElementById('projCanvas');
+  if (!canvas) return;
+  if (projChart) { projChart.destroy(); projChart = null; }
+
+  // Build unified, ordered label set
+  var allQuarters = [], quarterSet = {};
+  actualSeries.concat(projectedSeries).forEach(function(p) {
+    if (!quarterSet[p.quarter]) { quarterSet[p.quarter] = true; allQuarters.push(p.quarter); }
+  });
+
+  // Map quarter → IRR value (null where absent)
+  var actualMap = {}, projMap = {};
+  actualSeries.forEach(function(p)    { actualMap[p.quarter] = p.irrPct; });
+  projectedSeries.forEach(function(p) { projMap[p.quarter]   = p.irrPct; });
+
+  var actualData    = allQuarters.map(function(q) { return actualMap[q]  !== undefined ? actualMap[q]  : null; });
+  var projectedData = allQuarters.map(function(q) { return projMap[q]    !== undefined ? projMap[q]    : null; });
+
+  // TODAY divider: index of the last actual quarter
+  var lastActualIdx = -1;
+  actualSeries.forEach(function(p) {
+    var idx = allQuarters.indexOf(p.quarter);
+    if (idx > lastActualIdx) lastActualIdx = idx;
+  });
+
+  // Inline plugin: shaded future zone + vertical TODAY line
+  var todayPlugin = {
+    id: 'todayLine',
+    afterDraw: function(chart) {
+      if (lastActualIdx < 0 || lastActualIdx >= allQuarters.length - 1) return;
+      var ctx   = chart.ctx;
+      var xAxis = chart.scales.x;
+      var yAxis = chart.scales.y;
+      var x     = xAxis.getPixelForValue(lastActualIdx + 0.5);
+      var yTop  = yAxis.top;
+      var yBot  = yAxis.bottom;
+
+      // Shaded future zone
+      ctx.save();
+      ctx.fillStyle = 'rgba(232,113,10,0.05)';
+      ctx.fillRect(x, yTop, xAxis.right - x, yBot - yTop);
+
+      // Dashed vertical line
+      ctx.beginPath();
+      ctx.setLineDash([5, 3]);
+      ctx.strokeStyle = '#c0392b';
+      ctx.lineWidth   = 1.5;
+      ctx.moveTo(x, yTop);
+      ctx.lineTo(x, yBot);
+      ctx.stroke();
+
+      // TODAY label
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#c0392b';
+      ctx.font      = 'bold 10px "Google Sans","Segoe UI",Arial,sans-serif';
+      ctx.fillText('TODAY', x + 5, yTop + 13);
+      ctx.restore();
+    }
+  };
+
+  projChart = new Chart(canvas, {
+    type: 'line',
+    plugins: [todayPlugin],
+    data: {
+      labels: allQuarters,
+      datasets: [
+        {
+          label:            'Actual IRR',
+          data:             actualData,
+          borderColor:      '#1a73e8',
+          backgroundColor:  'rgba(26,115,232,0.07)',
+          borderWidth:      2.5,
+          pointRadius:      4,
+          pointBackgroundColor: '#1a73e8',
+          tension:          0.3,
+          spanGaps:         false
+        },
+        {
+          label:            'Projected IRR',
+          data:             projectedData,
+          borderColor:      '#e8710a',
+          backgroundColor:  'rgba(232,113,10,0.05)',
+          borderWidth:      2,
+          borderDash:       [6, 4],
+          pointRadius:      3,
+          pointBackgroundColor: '#e8710a',
+          tension:          0.3,
+          spanGaps:         false
+        }
+      ]
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      interaction:         { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function(items) { return items[0].label; },
+            label: function(item) {
+              if (item.raw === null) return null;
+              var tag = item.datasetIndex === 0 ? 'Actual IRR' : 'Projected IRR';
+              return '  ' + tag + ': ' + parseFloat(item.raw).toFixed(2) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type:  'category',
+          ticks: { font: { size: 10 }, maxRotation: 45 },
+          grid:  { color: 'rgba(0,0,0,0.04)' }
+        },
+        y: {
+          title: { display: true, text: 'IRR %', font: { size: 11 } },
+          ticks: { callback: function(v) { return v + '%'; }, font: { size: 10 } },
+          grid:  { color: 'rgba(0,0,0,0.06)' }
+        }
+      }
+    }
+  });
+}
+
+// ── Projected IRR helpers ─────────────────────────────────────
+function _projMetric(label, value, sub, cls) {
+  return '<div class="proj-metric ' + (cls || '') + '">' +
+    '<div class="pm-label">' + label + '</div>' +
+    '<div class="pm-value">' + value + '</div>' +
+    '<div class="pm-sub">'  + sub   + '</div>' +
+  '</div>';
+}
+
+function toggleSection(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? '' : 'none';
+  // Update the toggle label
+  var card = el.closest ? el.closest('.proj-chart-card') : el.parentElement;
+  if (card) {
+    var toggle = card.querySelector('.collapsible-toggle');
+    if (toggle) toggle.innerHTML = isHidden ? '&#x25BE; collapse' : '&#x25B8; expand';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+// Async-safe boot — wraps the async init() so unhandled promise is not silently swallowed
+(async function() { try { await init(); } catch(e) { console.error("[IVP] init() error:", e); } })();
+</script>
+</body>
+</html>
