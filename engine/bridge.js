@@ -244,6 +244,42 @@ function _getShimFunction(name) {
       return getAnalyticsSubPeriodTrend(pathStr, quarter, window.IVP_BUNDLE);
     },
 
+    // Reads Projected_CF + Projected_Val sheets and builds the projected IRR
+    // bundle. Phase 3 will implement the full engine; for now returns a
+    // well-structured stub so the dashboard renders its no-data state cleanly.
+    'getProjectedIRRBundle': async (pathStr) => {
+      // Attempt to read Projected_CF / Projected_Val if they exist
+      try {
+        const sheetNames = await getSheetNames();
+        const hasProjCF  = sheetNames.some(s => /projected.?cf/i.test(s));
+        const hasProjVal = sheetNames.some(s => /projected.?val/i.test(s));
+        if (!hasProjCF || !hasProjVal) {
+          return {
+            ok: false,
+            error: null,   // null = show the no-data guide, not an error banner
+            projectedSeries:  [],
+            actualSeries:     [],
+            varianceRows:     [],
+            varianceSummary:  {},
+            allocationAudit:  []
+          };
+        }
+        // Full implementation: Phase 3 (projectedIRR.gs port → projectedIrr.js)
+        return {
+          ok: false,
+          error: null,
+          projectedSeries:  [],
+          actualSeries:     [],
+          varianceRows:     [],
+          varianceSummary:  {},
+          allocationAudit:  []
+        };
+      } catch(e) {
+        return { ok: false, error: 'Projected IRR engine — Phase 3 (coming soon). ' + e.message,
+                 projectedSeries: [], actualSeries: [], varianceRows: [], varianceSummary: {}, allocationAudit: [] };
+      }
+    },
+
     // ── Reverse IRR / Backsolve ──────────────────────────────────────────
     'solveReverseIRR': async (params) => {
       const bs = await _loadBacksolve();
