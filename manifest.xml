@@ -7,7 +7,7 @@
   SETUP INSTRUCTIONS:
   1. Generate a GUID at https://guidgenerator.com/ and replace YOUR-GUID-HERE
   2. Host all files on GitHub Pages (or any HTTPS server)
-  3. Replace all occurrences of YOUR-GITHUB-PAGES-URL with your actual URL
+  3. Replace all occurrences of https://raagrawal-cell.github.io/irr-excel-addin with your actual URL
      e.g. https://raagrawal-cell.github.io/irr-excel-addin
 
   TO SIDELOAD IN EXCEL:
@@ -34,8 +34,8 @@
   <Description DefaultValue="PE/VC IRR computation, scenario simulation, reverse IRR backsolve, and management commentary for fund analytics."/>
 
   <!-- 32×32 and 80×80 icon URLs — replace with hosted IVP logo PNGs -->
-  <IconUrl DefaultValue="https://YOUR-GITHUB-PAGES-URL/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://YOUR-GITHUB-PAGES-URL/assets/icon-80.png"/>
+  <IconUrl DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/assets/icon-80.png"/>
 
   <SupportUrl DefaultValue="https://www.ivp.in"/>
   <AppDomains>
@@ -50,7 +50,7 @@
 
   <!-- ── Default task pane entry point ────────────────────────────────── -->
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://YOUR-GITHUB-PAGES-URL/taskpane.html"/>
+    <SourceLocation DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/taskpane.html"/>
   </DefaultSettings>
 
   <!-- ── Permissions: ReadWriteDocument to write Simulation_Log etc. ──── -->
@@ -111,14 +111,14 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://YOUR-GITHUB-PAGES-URL/assets/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://YOUR-GITHUB-PAGES-URL/assets/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://YOUR-GITHUB-PAGES-URL/assets/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/assets/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/assets/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl"  DefaultValue="https://www.ivp.in"/>
-        <bt:Url id="Commands.Url"             DefaultValue="https://YOUR-GITHUB-PAGES-URL/commands.html"/>
-        <bt:Url id="Taskpane.Url"             DefaultValue="https://YOUR-GITHUB-PAGES-URL/taskpane.html"/>
+        <bt:Url id="Commands.Url"             DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/commands.html"/>
+        <bt:Url id="Taskpane.Url"             DefaultValue="https://https://raagrawal-cell.github.io/irr-excel-addin/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title"       DefaultValue="IVP IRR Analytics Engine"/>
